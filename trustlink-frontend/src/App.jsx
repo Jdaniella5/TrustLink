@@ -1,17 +1,16 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import './App.css'
+import VerificationFlow from './pages/VerificationFlow'
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-    <div className='text-4xl flex justify-center items-center py-50'>
-      Welcome to Turst Link
-    </div>
-    </>
+    <Router>
+      <Routes>
+        <Route path="/verify" element={<VerificationFlow />} />
+        {/* Add other routes here */}
+        {/* Example: <Route path="/dashboard" element={<Dashboard />} /> */}
+      </Routes>
+    </Router>
   )
 }
 
