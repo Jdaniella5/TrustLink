@@ -1,6 +1,5 @@
 // src/pages/VerificationFlow.jsx
-// This is the main verification wizard that orchestrates all verification steps
-// It manages the multi-step flow and tracks progress across all verification types
+// FIXED: Now properly calls parent's onVerificationComplete to update App.jsx state
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -28,7 +27,8 @@ import TrustScore from '../components/verification/TrustScore';
 
 import { getVerificationProgress } from '../services/api';
 
-const VerificationFlow = () => {
+// FIXED: Added onVerificationComplete prop
+const VerificationFlow = ({ onVerificationComplete }) => {
   const navigate = useNavigate();
 
   // Get session ID from localStorage/sessionStorage (set during login)
@@ -173,21 +173,22 @@ const VerificationFlow = () => {
 
   /**
    * Handle completion of TrustScore verification
-   * This is called when the user completes viewing their trust score
+   * FIXED: Now calls parent's onVerificationComplete to update App.jsx state
    */
   const handleVerificationComplete = (data) => {
     console.log('🎉 All verification steps completed!', data);
     
-    // Mark trust score as complete
+    // Mark trust score as complete locally
     setStepStatus(prev => ({
       ...prev,
       trustScore: true
     }));
 
-    // Redirect to dashboard after a short delay
-    setTimeout(() => {
-      navigate('/dashboard');
-    }, 2000);
+    // CRITICAL FIX: Call parent's callback to update user state in App.jsx
+    // This updates verificationStatus to 'completed' so routing works correctly
+    if (onVerificationComplete) {
+      onVerificationComplete(data);
+    }
   };
 
   /**
@@ -292,6 +293,7 @@ const VerificationFlow = () => {
         <TrustScore 
           sessionId={sessionId} 
           onComplete={handleVerificationComplete}
+          navigate={navigate}
         />
       );
     }
@@ -332,13 +334,13 @@ const VerificationFlow = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen lg:px-50 px-0 bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
         {/* Header with Progress */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-800">Trust Verification</h1>
+              <h1 className="text-3xl font-bold text-gray-800">TrustLink Verification</h1>
               <p className="text-gray-600 mt-1">
                 {isTrustScoreStep 
                   ? 'View your Trust Score and verification results'
