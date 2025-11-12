@@ -781,13 +781,7 @@ const GPSTracking = ({ sessionId, onComplete }) => {
   };
 
   const handleTrackingComplete = async () => {
-    if (totalDistance < MIN_DISTANCE_REQUIRED) {
-      setError(
-        `Please move around more. You've only moved ${Math.round(totalDistance)}m, need at least ${MIN_DISTANCE_REQUIRED}m.`
-      );
-      return;
-    }
-
+   
     setIsSubmitting(true);
 
     try {
