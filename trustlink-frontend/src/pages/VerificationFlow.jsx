@@ -334,13 +334,13 @@ const VerificationFlow = ({ onVerificationComplete }) => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen lg:px-50 px-0 bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
         {/* Header with Progress */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-800">Trust Verification</h1>
+              <h1 className="text-3xl font-bold text-gray-800">TrustLink Verification</h1>
               <p className="text-gray-600 mt-1">
                 {isTrustScoreStep 
                   ? 'View your Trust Score and verification results'
