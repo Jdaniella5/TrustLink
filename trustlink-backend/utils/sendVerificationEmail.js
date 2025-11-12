@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 
-const sendVerificationEmail = async (email, code) => {
+export const sendVerificationEmail = async (email, code) => {
     const transporter = nodemailer.createTransport({
         service: "gmail",
         auth: {
@@ -26,5 +26,4 @@ const sendVerificationEmail = async (email, code) => {
     };
     await transporter.sendMail(mailOptions);
 };
-
-module.exports = sendVerificationEmail;   
+   

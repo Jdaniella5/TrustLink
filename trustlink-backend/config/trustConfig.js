@@ -4,7 +4,7 @@ export const WEIGHTS = {
   movement: 25,
   device: 10,
   email: 10,
-  community: 5 // community points added separately
+  community: 10 // community points added separately
 };
 
 export const SCORE_RANGES = [
