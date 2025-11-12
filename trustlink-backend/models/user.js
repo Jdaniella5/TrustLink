@@ -1,13 +1,30 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 
 const userSchema = new mongoose.Schema({
-  name: { type: String },
-  email: { type: String, required: true, unique: true },
-  passwordHash: { type: String },
-  emailVerified: { type: Boolean, default: false },
-  primaryDeviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Device', default: null },
-  trustScore: { type: Number, default: 0 },
-  createdAt: { type: Date, default: Date.now }
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    isVerified: { type: Boolean, required: true },
+    primaryDeviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Device', default: null },
+    trustScore: { type: Number, default: 0 },
+    createdAt: { type: Date, default: Date.now }
+}, { timestamps: true });
+
+//hash passowrd
+UserSchema.pre("save", async function (next) {
+    if (!this.isModified("password")) return next();
+
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(this.password, salt);
+        next();
 });
 
-export default mongoose.model('User', userSchema);
+//match password
+UserSchema.methods.matchPassword = async function (enteredPassword) {
+    return await bcrypt.compare(enteredPassword, this.password);
+};
+
+const User = mongoose.model("User", userSchema);
+
+export default User;
