@@ -37,6 +37,26 @@ export const verifyDeviceOtp = async (req, res, next) => {
     device.isBound = true;
     await device.save();
     const user = await User.findById(device.userId);
+const signals = {
+  livenessScore: (session.face && session.face.livenessScore) || 0,
+  faceMatched: (session.face && session.face.matched) || false,
+  movementScore: session.movementScore || 0,
+  deviceVerified: device.isBound,
+  emailVerified: !!user && user.isVerified,
+  communityVouches: session.communityVouches || 0
+};
+const score = calculateTrustScore(signals);
+const label = mapScoreLabel(score);
+user.trustScore = score;
+await user.save();
+
+// JWT cookie update
+const payload = { sub: user._id.toString(), sessionId: session._id.toString(), score, label };
+const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn:'24h' });
+session.trustPassportJwt = token;
+await session.save();
+res.cookie('trustPassport', token, { httpOnly:true, secure: process.env.NODE_ENV==='production', sameSite:'Strict', maxAge: 24*60*60*1000 });
+
     if (user && !user.primaryDeviceId) { user.primaryDeviceId = device._id; await user.save(); }
     await rec.deleteOne();
     res.json({ message: 'Device confirmed and bound' });

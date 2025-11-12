@@ -1,8 +1,12 @@
-import jwt from 'jsonwebtoken';
-export default function auth(req,res,next){
-  const a = req.headers.authorization;
-  if(!a) return res.status(401).json({message:'No token'});
-  const token = a.split(' ')[1];
-  try{ const p = jwt.verify(token, process.env.JWT_SECRET); req.user = p; next(); }
-  catch(e){ res.status(401).json({message:'Invalid token'}); }
+export default function auth(req, res, next) {
+  const token = req.cookies?.token || (req.headers.authorization?.split(' ')[1]);
+  if (!token) return res.status(401).json({ message: 'No token found' });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    res.status(401).json({ message: 'Invalid token' });
+  }
 }

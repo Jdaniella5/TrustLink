@@ -32,10 +32,20 @@ export const login = async (req, res, next) => {
     if (!u) return res.status(400).json({ message: 'Invalid' });
     const ok = await bcrypt.compare(password, u.password || '');
     if (!ok) return res.status(400).json({ message: 'Invalid' });
+   const session = await Session.findOne({ userId: u._id }).sort({ createdAt: -1 });
+res.json({ userId: u._id, sessionId: session._id, message: 'Logged in' });
     // create JWT
     const jwt = (await import('jsonwebtoken')).default;
     const token = jwt.sign({ userId: u._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, userId: u._id });
+    res.cookie('token', token, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'Strict',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+});
+
+// Send minimal info in JSON
+res.json({ userId: u._id, message: 'Logged in' });
   } catch (err) { next(err); }
 };
 
@@ -58,6 +68,14 @@ export const verifyOtp = async (req, res, next) => {
     // update session
     const session = await Session.findOne({ userId }).sort({ createdAt: -1 });
     if (session) { session.emailVerifiedAt = new Date(); await session.save(); }
+
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+res.cookie('token', token, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'Strict',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+});
     res.json({ message: 'Email verified' });
   } catch (err) { next(err); }
 };
