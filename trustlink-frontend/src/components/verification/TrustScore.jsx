@@ -1,6 +1,5 @@
 // src/components/verification/TrustScore.jsx
-// This component displays the final trust score and verification results
-// Shows breakdown by category and generates Trust Passport
+// FIXED: Removed automatic onComplete call, fixed navigation
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -17,11 +16,12 @@ import {
   Users,
   Shield,
   Copy,
-  Check
+  Check,
+  Home
 } from 'lucide-react';
 import { getTrustScore } from '../../services/api';
 
-const TrustScore = ({ sessionId, onComplete }) => {
+const TrustScore = ({ sessionId, onComplete, navigate }) => {
   // Component state
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -56,6 +56,7 @@ const TrustScore = ({ sessionId, onComplete }) => {
 
   /**
    * Fetch trust score from backend
+   * FIXED: Only call onComplete when user explicitly clicks button
    */
   const loadTrustScore = async () => {
     setIsLoading(true);
@@ -67,19 +68,41 @@ const TrustScore = ({ sessionId, onComplete }) => {
       
       setScoreData(data);
       
-      // Notify parent that verification is complete
-      if (onComplete) {
-        onComplete({
-          success: true,
-          trustScore: data.trustScore,
-          trustPassport: data.trustPassport
-        });
-      }
+      // DON'T call onComplete automatically - only when user navigates away
+      // This prevents the redirect loop
+      
     } catch (err) {
       console.error('Failed to load trust score:', err);
       setError('Failed to calculate trust score. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // =============================================================================
+  // NAVIGATION
+  // =============================================================================
+
+  /**
+   * Handle navigation to dashboard
+   * FIXED: Use React Router navigate instead of window.location
+   */
+  const handleGoToDashboard = () => {
+    // Mark verification as complete
+    if (onComplete && scoreData) {
+      onComplete({
+        success: true,
+        trustScore: scoreData.trustScore,
+        trustPassport: scoreData.trustPassport
+      });
+    }
+
+    // Navigate to dashboard or home
+    if (navigate) {
+      navigate('/dashboard'); // Change this to your actual dashboard route
+    } else {
+      // Fallback if navigate prop not provided
+      window.location.href = '/dashboard';
     }
   };
 
@@ -409,12 +432,13 @@ const TrustScore = ({ sessionId, onComplete }) => {
         </div>
       </div>
 
-      {/* Call to Action */}
+      {/* Call to Action - FIXED */}
       <div className="text-center">
         <button
-          onClick={() => window.location.href = '/dashboard'}
-          className="px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition text-lg font-semibold shadow-lg"
+          onClick={handleGoToDashboard}
+          className="px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition text-lg font-semibold shadow-lg flex items-center gap-2 mx-auto"
         >
+          <Home size={24} />
           Go to Dashboard
         </button>
       </div>
