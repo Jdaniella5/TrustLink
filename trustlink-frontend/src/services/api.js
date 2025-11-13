@@ -1,15 +1,18 @@
 // src/services/api.js
-// This file contains all API calls to the backend
-// Currently using MOCK data - replace with real axios calls when backend is ready
+// API service connected to TrustLink backend
+// Backend URL: https://trustlink-backend-jthl.onrender.com
 
 import axios from 'axios';
 
-// Base URL - change this to your backend URL when ready
-// For Vite, use import.meta.env instead of process.env
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+// =============================================================================
+// API CONFIGURATION
+// =============================================================================
 
-// Check if we should use mock API (useful during development)
-const USE_MOCK = import.meta.env.VITE_USE_MOCK_API === 'true' || true; // Default to true for now
+// Backend base URL - your deployed Render backend
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://trustlink-backend-jthl.onrender.com/api';
+
+// Toggle between mock and real API (set to false to use real backend)
+const USE_MOCK = import.meta.env.VITE_USE_MOCK_API === 'true' || false; // Now defaults to REAL API
 
 // Create axios instance with default config
 const api = axios.create({
@@ -17,13 +20,13 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000, // 10 second timeout
+  timeout: 30000, // 30 second timeout (Render can be slow on cold starts)
+  withCredentials: true, // Important: Send cookies with requests
 });
 
-// Add request interceptor to attach JWT token to all requests
+// Add request interceptor to attach JWT token
 api.interceptors.request.use(
   (config) => {
-    // Get token from sessionStorage (we'll store it after login)
     const token = sessionStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -35,14 +38,14 @@ api.interceptors.request.use(
   }
 );
 
-// Add response interceptor to handle errors globally
+// Add response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Unauthorized - clear token and redirect to login
       sessionStorage.removeItem('authToken');
       sessionStorage.removeItem('user');
+      sessionStorage.removeItem('sessionId');
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -50,7 +53,7 @@ api.interceptors.response.use(
 );
 
 // =============================================================================
-// MOCK DATA GENERATORS (Remove these when backend is ready)
+// MOCK DATA (for testing - remove when fully connected)
 // =============================================================================
 
 const generateMockUser = (email, name) => ({
@@ -63,12 +66,6 @@ const generateMockUser = (email, name) => ({
   createdAt: new Date().toISOString(),
 });
 
-const generateMockToken = () => {
-  // Fake JWT token for development
-  return `mock_token_${Date.now()}`;
-};
-
-// Simulate network delay for realistic testing
 const mockDelay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
 
 // =============================================================================
@@ -77,57 +74,107 @@ const mockDelay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * Register a new user
+ * POST /api/user/register
  * @param {Object} userData - { name, email, password }
- * @returns {Promise<Object>} - { user, token, sessionId }
+ * @returns {Promise<Object>} - { userId, sessionId, message }
  */
 export const registerUser = async (userData) => {
   if (USE_MOCK) {
     await mockDelay();
     const user = generateMockUser(userData.email, userData.name);
-    const token = generateMockToken();
-    return { user, token, sessionId: user.sessionId };
+    return { userId: user._id, sessionId: user.sessionId, message: 'Registered' };
   }
 
-  // REAL API CALL (uncomment when backend is ready):
-  // const response = await api.post('/auth/register', userData);
-  // return response.data;
-  
-  throw new Error('Backend not connected yet');
+  try {
+    const response = await api.post('/user/register', {
+      name: userData.name,
+      email: userData.email,
+      password: userData.password
+    });
+    
+    // Store userId and sessionId for later use
+    if (response.data.userId) {
+      sessionStorage.setItem('userId', response.data.userId);
+    }
+    if (response.data.sessionId) {
+      sessionStorage.setItem('sessionId', response.data.sessionId);
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Register error:', error.response?.data || error.message);
+    throw error;
+  }
 };
 
 /**
  * Login existing user
+ * POST /api/user/login
  * @param {Object} credentials - { email, password }
- * @returns {Promise<Object>} - { user, token, sessionId }
+ * @returns {Promise<Object>} - { userId, sessionId, message }
  */
 export const loginUser = async (credentials) => {
   if (USE_MOCK) {
     await mockDelay();
     const user = generateMockUser(credentials.email, 'Mock User');
-    const token = generateMockToken();
-    return { user, token, sessionId: user.sessionId };
+    return { userId: user._id, sessionId: user.sessionId, message: 'Logged in' };
   }
 
-  // REAL API CALL (uncomment when backend is ready):
-  // const response = await api.post('/auth/login', credentials);
-  // return response.data;
-  
-  throw new Error('Backend not connected yet');
+  try {
+    const response = await api.post('/user/login', {
+      email: credentials.email,
+      password: credentials.password
+    });
+    
+    // Store auth data
+    if (response.data.userId) {
+      sessionStorage.setItem('userId', response.data.userId);
+    }
+    if (response.data.sessionId) {
+      sessionStorage.setItem('sessionId', response.data.sessionId);
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Login error:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+/**
+ * Verify email with OTP
+ * POST /api/user/verify-otp
+ * @param {string} userId - User ID
+ * @param {string} otp - OTP code from email
+ * @returns {Promise<Object>} - { message }
+ */
+export const verifyEmailOTP = async (userId, otp) => {
+  if (USE_MOCK) {
+    await mockDelay(600);
+    const isValid = otp === '123456';
+    return { 
+      success: isValid, 
+      message: isValid ? 'Email verified' : 'Invalid OTP' 
+    };
+  }
+
+  try {
+    const response = await api.post('/user/verify-otp', {
+      userId,
+      otp
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Verify OTP error:', error.response?.data || error.message);
+    throw error;
+  }
 };
 
 /**
  * Logout current user
  */
 export const logoutUser = async () => {
-  if (USE_MOCK) {
-    await mockDelay(200);
-    return { success: true };
-  }
-
-  // REAL API CALL (uncomment when backend is ready):
-  // const response = await api.post('/auth/logout');
-  // return response.data;
-  
+  sessionStorage.clear();
   return { success: true };
 };
 
@@ -136,10 +183,11 @@ export const logoutUser = async () => {
 // =============================================================================
 
 /**
- * Submit face embedding and liveness score
- * @param {string} sessionId - User's session ID
- * @param {Object} faceData - { embedding: Array, livenessScore: Number, actions: Array }
- * @returns {Promise<Object>} - { success, message }
+ * Submit face verification with liveness detection
+ * POST /api/face/verify
+ * @param {string} sessionId - Session ID
+ * @param {Object} faceData - { actionsDetected: Array, embedding: Array }
+ * @returns {Promise<Object>} - { success, liveness, faceMatched, trustScore }
  */
 export const submitFaceData = async (sessionId, faceData) => {
   if (USE_MOCK) {
@@ -147,21 +195,26 @@ export const submitFaceData = async (sessionId, faceData) => {
     console.log('📸 Mock: Submitted face data', { sessionId, faceData });
     return { 
       success: true, 
-      message: 'Face data verified successfully',
-      livenessScore: faceData.livenessScore 
+      message: 'Face data verified',
+      liveness: {
+        livenessScore: faceData.livenessScore || 0.95,
+        actionsDetected: faceData.actions || [],
+        verified: true
+      }
     };
   }
 
-  // REAL API CALL (uncomment when backend is ready):
-  // const response = await api.post(`/session/${sessionId}/face`, {
-  //   embedding: faceData.embedding,
-  //   livenessScore: faceData.livenessScore,
-  //   timestamp: new Date().toISOString(),
-  //   actionsCompleted: faceData.actions
-  // });
-  // return response.data;
-  
-  throw new Error('Backend not connected yet');
+  try {
+    const response = await api.post('/face/verify', {
+      sessionId,
+      actionsDetected: faceData.actions || [],
+      embedding: faceData.embedding || null
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Face verification error:', error.response?.data || error.message);
+    throw error;
+  }
 };
 
 // =============================================================================
@@ -169,105 +222,79 @@ export const submitFaceData = async (sessionId, faceData) => {
 // =============================================================================
 
 /**
- * Submit GPS ping with location data
- * @param {string} sessionId - User's session ID
- * @param {Object} locationData - { lat, lon, accuracy, timestamp }
- * @returns {Promise<Object>} - { success, message }
+ * Submit GPS ping
+ * POST /api/motion/ping
+ * @param {string} sessionId - Session ID
+ * @param {Object} locationData - { lat, lon, accuracy, ts }
+ * @returns {Promise<Object>} - { movementScore, totalDistance, avgSpeed }
  */
 export const submitLocationPing = async (sessionId, locationData) => {
   if (USE_MOCK) {
     await mockDelay(300);
-    console.log('📍 Mock: Submitted location ping', { sessionId, locationData });
-    return { success: true, message: 'Location recorded' };
+    console.log('📍 Mock: Location ping', { sessionId, locationData });
+    return { success: true, movementScore: 0.75 };
   }
 
-  // REAL API CALL (uncomment when backend is ready):
-  // const response = await api.post(`/session/${sessionId}/ping`, {
-  //   lat: locationData.lat,
-  //   lon: locationData.lon,
-  //   acc: locationData.accuracy,
-  //   ts: locationData.timestamp
-  // });
-  // return response.data;
-  
-  throw new Error('Backend not connected yet');
+  try {
+    const response = await api.post('/motion/ping', {
+      sessionId,
+      lat: locationData.lat,
+      lon: locationData.lon,
+      accuracy: locationData.accuracy,
+      ts: locationData.timestamp || new Date().toISOString()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Location ping error:', error.response?.data || error.message);
+    throw error;
+  }
 };
 
 /**
- * Submit multiple location pings at once
- * @param {string} sessionId - User's session ID
- * @param {Array} locationPings - Array of location objects
- * @returns {Promise<Object>} - { success, message, totalPings }
+ * Complete motion tracking
+ * POST /api/motion/complete
+ * @param {string} sessionId - Session ID
+ * @returns {Promise<Object>} - { movementScore, totalDistance }
+ */
+export const completeMotionTracking = async (sessionId) => {
+  if (USE_MOCK) {
+    await mockDelay(500);
+    return { success: true, movementScore: 0.85, totalDistance: 120 };
+  }
+
+  try {
+    const response = await api.post('/motion/complete', { sessionId });
+    return response.data;
+  } catch (error) {
+    console.error('Complete motion error:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+/**
+ * Submit multiple location pings (batch)
+ * Note: Backend doesn't have batch endpoint, so we'll send individually
  */
 export const submitLocationBatch = async (sessionId, locationPings) => {
   if (USE_MOCK) {
     await mockDelay(500);
-    console.log('📍 Mock: Submitted location batch', { sessionId, count: locationPings.length });
+    return { success: true, totalPings: locationPings.length };
+  }
+
+  try {
+    // Send pings individually since backend doesn't support batch
+    const results = await Promise.all(
+      locationPings.map(ping => submitLocationPing(sessionId, ping))
+    );
     return { 
       success: true, 
-      message: 'Location batch recorded',
-      totalPings: locationPings.length 
+      totalPings: results.length,
+      movementScore: results[results.length - 1]?.movementScore 
     };
+  } catch (error) {
+    console.error('Batch location error:', error.response?.data || error.message);
+    throw error;
   }
-
-  // REAL API CALL (uncomment when backend is ready):
-  // const response = await api.post(`/session/${sessionId}/ping/batch`, {
-  //   pings: locationPings
-  // });
-  // return response.data;
-  
-  throw new Error('Backend not connected yet');
-};
-
-// =============================================================================
-// EMAIL VERIFICATION API
-// =============================================================================
-
-/**
- * Request email verification (sends email with link/OTP)
- * @param {string} email - User's email address
- * @returns {Promise<Object>} - { success, message }
- */
-export const requestEmailVerification = async (email) => {
-  if (USE_MOCK) {
-    await mockDelay(800);
-    console.log('📧 Mock: Email verification sent to', email);
-    return { 
-      success: true, 
-      message: 'Verification email sent',
-      mockOTP: '123456' // In real app, this comes via email
-    };
-  }
-
-  // REAL API CALL (uncomment when backend is ready):
-  // const response = await api.post('/verify-email/request', { email });
-  // return response.data;
-  
-  throw new Error('Backend not connected yet');
-};
-
-/**
- * Verify email with OTP code
- * @param {string} email - User's email
- * @param {string} otp - OTP code from email
- * @returns {Promise<Object>} - { success, message }
- */
-export const verifyEmailOTP = async (email, otp) => {
-  if (USE_MOCK) {
-    await mockDelay(600);
-    const isValid = otp === '123456'; // Mock OTP
-    console.log('📧 Mock: Email verification', { email, otp, isValid });
-    return { 
-      success: isValid, 
-      message: isValid ? 'Email verified' : 'Invalid OTP' 
-    };
-  }
-
-  // REAL API CALL (uncomment when backend is ready):
-  // const response = await api.post('/verify-email', { email, otp });
-  // return response.data;
-  
-  throw new Error('Backend not connected yet');
 };
 
 // =============================================================================
@@ -275,23 +302,97 @@ export const verifyEmailOTP = async (email, otp) => {
 // =============================================================================
 
 /**
- * Submit device fingerprint data
- * @param {string} sessionId - User's session ID
- * @param {Object} deviceData - Device fingerprint object
- * @returns {Promise<Object>} - { success, message }
+ * Register device fingerprint
+ * POST /api/device/register
+ * @param {string} userId - User ID
+ * @param {Object} deviceData - Device fingerprint data
+ * @returns {Promise<Object>} - { deviceId, message }
  */
-export const submitDeviceFingerprint = async (sessionId, deviceData) => {
+export const registerDevice = async (userId, deviceData) => {
   if (USE_MOCK) {
     await mockDelay(500);
-    console.log('💻 Mock: Submitted device fingerprint', { sessionId, deviceData });
-    return { success: true, message: 'Device registered' };
+    console.log('💻 Mock: Device registered', { userId, deviceData });
+    return { success: true, deviceId: `device_${Date.now()}` };
   }
 
-  // REAL API CALL (uncomment when backend is ready):
-  // const response = await api.post(`/session/${sessionId}/device`, deviceData);
-  // return response.data;
-  
-  throw new Error('Backend not connected yet');
+  try {
+    // Convert device fingerprint to string for hashing
+    const fingerprintString = JSON.stringify(deviceData);
+    
+    const response = await api.post('/device/register', {
+      userId,
+      fingerprint: fingerprintString,
+      meta: deviceData
+    });
+    
+    // Store device ID for OTP verification
+    if (response.data.deviceId) {
+      sessionStorage.setItem('deviceId', response.data.deviceId);
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Device register error:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+/**
+ * Verify device with OTP
+ * POST /api/device/verify-otp
+ * @param {string} deviceId - Device ID
+ * @param {string} otp - OTP code
+ * @returns {Promise<Object>} - { message }
+ */
+export const verifyDeviceOTP = async (deviceId, otp) => {
+  if (USE_MOCK) {
+    await mockDelay(600);
+    return { success: true, message: 'Device verified' };
+  }
+
+  try {
+    const response = await api.post('/device/verify-otp', {
+      deviceId,
+      otp
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Device verify error:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+/**
+ * Legacy: Submit device fingerprint (calls registerDevice)
+ */
+export const submitDeviceFingerprint = async (sessionId, deviceData) => {
+  const userId = sessionStorage.getItem('userId');
+  if (!userId) {
+    throw new Error('User ID not found. Please login first.');
+  }
+  return registerDevice(userId, deviceData);
+};
+
+// =============================================================================
+// EMAIL VERIFICATION API
+// =============================================================================
+
+/**
+ * Request email verification
+ * Note: Email is sent during registration, this is just for re-sending
+ */
+export const requestEmailVerification = async (email) => {
+  if (USE_MOCK) {
+    await mockDelay(800);
+    return { success: true, message: 'Verification email sent', mockOTP: '123456' };
+  }
+
+  // Backend sends OTP during registration, no separate request needed
+  // You could add a resend endpoint if needed
+  return { 
+    success: true, 
+    message: 'Check your email for OTP (sent during registration)' 
+  };
 };
 
 // =============================================================================
@@ -299,23 +400,29 @@ export const submitDeviceFingerprint = async (sessionId, deviceData) => {
 // =============================================================================
 
 /**
- * Submit a community vouch (referee)
- * @param {string} sessionId - User's session ID
- * @param {Object} vouchData - { referrerUserId, relationship, notes }
- * @returns {Promise<Object>} - { success, message }
+ * Submit community vouch
+ * POST /api/community/vouch
+ * @param {string} sessionId - Session ID
+ * @param {string} refereeUserId - Referee user ID
+ * @returns {Promise<Object>} - { success, communityVouches }
  */
-export const submitCommunityVouch = async (sessionId, vouchData) => {
+export const submitCommunityVouch = async (sessionId, refereeUserId) => {
   if (USE_MOCK) {
     await mockDelay(500);
-    console.log('🤝 Mock: Submitted community vouch', { sessionId, vouchData });
-    return { success: true, message: 'Vouch recorded' };
+    console.log('🤝 Mock: Community vouch', { sessionId, refereeUserId });
+    return { success: true, communityVouches: 1 };
   }
 
-  // REAL API CALL (uncomment when backend is ready):
-  // const response = await api.post(`/session/${sessionId}/community-vouch`, vouchData);
-  // return response.data;
-  
-  throw new Error('Backend not connected yet');
+  try {
+    const response = await api.post('/community/vouch', {
+      sessionId,
+      refereeUserId
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Community vouch error:', error.response?.data || error.message);
+    throw error;
+  }
 };
 
 // =============================================================================
@@ -323,43 +430,50 @@ export const submitCommunityVouch = async (sessionId, vouchData) => {
 // =============================================================================
 
 /**
- * Get calculated trust score for user
- * @param {string} sessionId - User's session ID
- * @returns {Promise<Object>} - { trustScore, breakdown, trustPassport }
+ * Get trust score
+ * GET /api/trust/score/:sessionId
+ * @param {string} sessionId - Session ID
+ * @returns {Promise<Object>} - { trustScore, label, breakdown, passportJwt }
  */
 export const getTrustScore = async (sessionId) => {
   if (USE_MOCK) {
-    await mockDelay(1500); // Simulate computation time
-    console.log('🎯 Mock: Calculated trust score for', sessionId);
-    
-    // Mock trust score calculation
-    const mockScore = {
+    await mockDelay(1500);
+    return {
       trustScore: 87,
+      label: 'Excellent',
       breakdown: {
-        identity: 90,      // Face + liveness
-        address: 85,       // GPS + movement
-        device: 88,        // Device fingerprint
-        email: 100,        // Email verified
-        community: 75      // Vouches
+        livenessScore: 0.9,
+        faceMatched: true,
+        movementScore: 0.85,
+        deviceVerified: true,
+        emailVerified: true,
+        communityVouches: 2
       },
-      trustPassport: `TRUST_${Date.now()}`, // JWT token in real app
+      passportJwt: `TRUST_${Date.now()}`,
       verifiedAt: new Date().toISOString()
     };
-    
-    return mockScore;
   }
 
-  // REAL API CALL (uncomment when backend is ready):
-  // const response = await api.get(`/session/${sessionId}/trust-score`);
-  // return response.data;
-  
-  throw new Error('Backend not connected yet');
+  try {
+    const response = await api.get(`/trust/score/${sessionId}`);
+    
+    // Store trust passport JWT in cookie (backend also sets it)
+    if (response.data.passportJwt) {
+      sessionStorage.setItem('trustPassport', response.data.passportJwt);
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Get trust score error:', error.response?.data || error.message);
+    throw error;
+  }
 };
 
 /**
- * Get user's verification progress
- * @param {string} sessionId - User's session ID
- * @returns {Promise<Object>} - Progress status for each verification step
+ * Get verification progress
+ * Note: Backend doesn't have progress endpoint, we'll fetch session data
+ * @param {string} sessionId - Session ID
+ * @returns {Promise<Object>} - Progress object
  */
 export const getVerificationProgress = async (sessionId) => {
   if (USE_MOCK) {
@@ -369,26 +483,50 @@ export const getVerificationProgress = async (sessionId) => {
       address: false,
       device: false,
       email: false,
-      community: false
+      community: false,
+      trustScore: false
     };
   }
 
-  // REAL API CALL (uncomment when backend is ready):
-  // const response = await api.get(`/session/${sessionId}/progress`);
-  // return response.data;
-  
-  throw new Error('Backend not connected yet');
+  try {
+    // Fetch trust score which contains all verification status
+    const trustData = await getTrustScore(sessionId);
+    
+    // Map backend signals to frontend progress
+    return {
+      identity: (trustData.breakdown?.livenessScore || 0) > 0,
+      address: (trustData.breakdown?.movementScore || 0) > 0,
+      device: trustData.breakdown?.deviceVerified || false,
+      email: trustData.breakdown?.emailVerified || false,
+      community: (trustData.breakdown?.communityVouches || 0) > 0,
+      trustScore: trustData.trustScore > 0
+    };
+  } catch (error) {
+    // If error, return empty progress
+    console.error('Get progress error:', error.response?.data || error.message);
+    return {
+      identity: false,
+      address: false,
+      device: false,
+      email: false,
+      community: false,
+      trustScore: false
+    };
+  }
 };
 
 // =============================================================================
-// EXPORT ALL API FUNCTIONS
+// EXPORT API INSTANCE & FUNCTIONS
 // =============================================================================
+
+export { api };
 
 export default {
   // Auth
   registerUser,
   loginUser,
   logoutUser,
+  verifyEmailOTP,
   
   // Identity
   submitFaceData,
@@ -396,12 +534,14 @@ export default {
   // Address
   submitLocationPing,
   submitLocationBatch,
+  completeMotionTracking,
   
   // Email
   requestEmailVerification,
-  verifyEmailOTP,
   
   // Device
+  registerDevice,
+  verifyDeviceOTP,
   submitDeviceFingerprint,
   
   // Community

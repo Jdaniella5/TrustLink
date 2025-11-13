@@ -14,10 +14,12 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react';
-import { registerUser } from '../../services/api';
 
 const Register = ({ onLogin }) => {
   const navigate = useNavigate();
+
+  // Backend API URL
+  const API_URL = 'https://trustlink-backend-jthl.onrender.com/api/user';
 
   // Form state
   const [formData, setFormData] = useState({
@@ -173,33 +175,47 @@ const Register = ({ onLogin }) => {
 
     try {
       // Register user via API
-      const response = await registerUser({
-        name: formData.name.trim(),
-        email: formData.email.trim().toLowerCase(),
-        password: formData.password
+      const response = await fetch(`${API_URL}/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          email: formData.email.trim().toLowerCase(),
+          password: formData.password
+        })
       });
 
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Registration failed');
+      }
+
       // ✅ CALL onLogin PROP - This updates App.jsx user state
-      onLogin(response.user);
+      onLogin(data.user);
 
       // Store user data and token in session
-      sessionStorage.setItem('authToken', response.token);
-      sessionStorage.setItem('sessionId', response.sessionId);
-      sessionStorage.setItem('user', JSON.stringify(response.user));
+      if (data.token) {
+        sessionStorage.setItem('authToken', data.token);
+      }
+      if (data.sessionId) {
+        sessionStorage.setItem('sessionId', data.sessionId);
+      }
+      sessionStorage.setItem('user', JSON.stringify(data.user));
 
-      // Redirect to verification flow
+      // Redirect to verification flow (OTP verification based on your routes)
       navigate('/verify');
 
     } catch (err) {
       console.error('Registration error:', err);
       
       // Handle specific error messages
-      if (err.response?.status === 409) {
+      if (err.message.includes('already exists')) {
         setError('An account with this email already exists');
-      } else if (err.response?.data?.message) {
-        setError(err.response.data.message);
       } else {
-        setError('Registration failed. Please try again.');
+        setError(err.message || 'Registration failed. Please try again.');
       }
     } finally {
       setIsLoading(false);

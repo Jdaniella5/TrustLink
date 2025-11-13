@@ -13,10 +13,12 @@ import {
   AlertCircle,
   Shield
 } from 'lucide-react';
-import { loginUser } from '../../services/api';
 
 const Login = ({ onLogin }) => {
   const navigate = useNavigate();
+
+  // Backend API URL
+  const API_URL = 'https://trustlink-backend-jthl.onrender.com/api/user';
 
   // Form state
   const [formData, setFormData] = useState({
@@ -77,27 +79,41 @@ const Login = ({ onLogin }) => {
 
     try {
       // Login via API
-      const response = await loginUser({
-        email: formData.email.trim().toLowerCase(),
-        password: formData.password
+      const response = await fetch(`${API_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email.trim().toLowerCase(),
+          password: formData.password
+        })
       });
 
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
       // ✅ CALL onLogin PROP - This updates App.jsx user state
-      onLogin(response.user);
+      onLogin(data.user);
 
       // Store auth data in session
       const storage = rememberMe ? localStorage : sessionStorage;
-      storage.setItem('authToken', response.token);
-      storage.setItem('sessionId', response.sessionId);
-      storage.setItem('user', JSON.stringify(response.user));
-
-      // Also store in sessionStorage for consistency across app
-      sessionStorage.setItem('authToken', response.token);
-      sessionStorage.setItem('sessionId', response.sessionId);
-      sessionStorage.setItem('user', JSON.stringify(response.user));
+      if (data.token) {
+        storage.setItem('authToken', data.token);
+        sessionStorage.setItem('authToken', data.token);
+      }
+      if (data.sessionId) {
+        storage.setItem('sessionId', data.sessionId);
+        sessionStorage.setItem('sessionId', data.sessionId);
+      }
+      storage.setItem('user', JSON.stringify(data.user));
+      sessionStorage.setItem('user', JSON.stringify(data.user));
 
       // Check if user has completed verification
-      const hasCompletedVerification = response.user.trustScore > 0;
+      const hasCompletedVerification = data.user.trustScore > 0;
 
       if (hasCompletedVerification) {
         // User already verified, go to dashboard
@@ -111,14 +127,12 @@ const Login = ({ onLogin }) => {
       console.error('Login error:', err);
       
       // Handle specific error messages
-      if (err.response?.status === 401) {
+      if (err.message.includes('Invalid') || err.message.includes('password')) {
         setError('Invalid email or password');
-      } else if (err.response?.status === 404) {
+      } else if (err.message.includes('not found')) {
         setError('No account found with this email');
-      } else if (err.response?.data?.message) {
-        setError(err.response.data.message);
       } else {
-        setError('Login failed. Please try again.');
+        setError(err.message || 'Login failed. Please try again.');
       }
     } finally {
       setIsLoading(false);
