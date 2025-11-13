@@ -153,7 +153,7 @@ TrustLink/
 
 2. **Frontend Setup**:
    ```bash
-   cd TrustLink_Frontend
+   cd trustlink-fromtend
    npm install
    npm run dev
    ```
@@ -161,7 +161,7 @@ TrustLink/
 
 3. **Backend Setup**:
    ```bash
-   cd TrustLink_Frontend
+   cd trustlink-backend
    npm install
    node server.js
    ```
