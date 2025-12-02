@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+/*import mongoose from 'mongoose';
 const deviceSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   fingerprintHash: { type: String, required: true },
@@ -8,4 +8,4 @@ const deviceSchema = new mongoose.Schema({
   ipAddresses: [String],
   createdAt: { type: Date, default: Date.now }
 });
-export default mongoose.model('Device', deviceSchema);
+export default mongoose.model('Device', deviceSchema);*/
