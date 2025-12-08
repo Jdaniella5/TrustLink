@@ -8,16 +8,16 @@ import { randomBytes } from 'crypto';
 
 export const register = async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, DOB, Address, phoneNumber } = req.body;
     if (!email || !password) return res.status(400).json({ message: 'email & password required' });
     const existing = await User.findOne({ email });
     if (existing) return res.status(400).json({ message: 'email exists' });
-    const user = await User.create({ name, email, password });
+    const user = await User.create({ name, email, password, DOB, Address, phoneNumber });
     const session = await Session.create({ userId: user._id });
 
     // create OTP
     const { otp, otpHash } = await createAndHashOtp();
-    const expiresAt = new Date(Date.now() + 5*60*1000); // 5 min
+    const expiresAt = new Date(Date.now() + 0.5*60*1000); // 30 seconds
     await Verification.create({ userId: user._id, otpHash, purpose:'email', expiresAt });
 
     await sendVerificationEmail(email, otp);
