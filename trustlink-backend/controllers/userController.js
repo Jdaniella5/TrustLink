@@ -15,13 +15,7 @@ export const register = async (req, res, next) => {
     const user = await User.create({ name, email, password, DOB, Address, phoneNumber });
     const session = await Session.create({ userId: user._id });
 
-    // create OTP
-    const { otp, otpHash } = await createAndHashOtp();
-    const expiresAt = new Date(Date.now() + 0.5*60*1000); // 30 seconds
-    await Verification.create({ userId: user._id, otpHash, purpose:'email', expiresAt });
-
-    await sendVerificationEmail(email, otp);
-    res.json({ userId: user._id, sessionId: session._id, message: 'Registered. Check email for OTP (5 min).' });
+    res.json({ userId: user._id, sessionId: session._id, message: 'Registered.' });
   } catch (err) { next(err); }
 };
 
@@ -30,10 +24,29 @@ export const login = async (req, res, next) => {
     const { email, password } = req.body;
     const u = await User.findOne({ email });
     if (!u) return res.status(400).json({ message: 'Invalid' });
+
+    //check for lockout
+    if (u.lockUntil && u.lockUntil > Date.now()) {
+      return res.status(403).json({
+        message: "Account locked. Try again later."
+      });
+    }
     const ok = await bcrypt.compare(password, u.password || '');
-    if (!ok) return res.status(400).json({ message: 'Invalid' });
+    if (!ok) {
+      u.loginAttempts = (u.loginAttempts || 0) +1; 
+      //lockout after 5 attempts for 10 minuites
+      if (u.loginAttempts >= 5) {
+        u.lockUntil = new Date(Date.now() + 10 * 60 * 1000);
+      }
+      await u.save();
+
+      return res.status(400).json({ message: 'Invalid' });
+    }
+    //reset attempts when login is successful
+    u.loginAttempts = 0;
+    u.lockUntil = null;
+    await u.save();
    const session = await Session.findOne({ userId: u._id }).sort({ createdAt: -1 });
-res.json({ userId: u._id, sessionId: session._id, message: 'Logged in' });
     // create JWT
     const jwt = (await import('jsonwebtoken')).default;
     const token = jwt.sign({ userId: u._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -45,8 +58,28 @@ res.json({ userId: u._id, sessionId: session._id, message: 'Logged in' });
 });
 
 // Send minimal info in JSON
-res.json({ userId: u._id, message: 'Logged in' });
+return res.json({ userId: u._id, sessionId: session?._id, message: 'Logged in' });
   } catch (err) { next(err); }
+};
+
+export const sendVerificationOtp = async (req, res, next) => {
+  try {
+    const { userId, email } = req.body;
+    const { otp, otpHash } = await createAndHashOtp();
+    const expiresAt = new Date(Date.now() + 0.5 * 60 * 1000); // 30 seconds
+
+    //sendOtp
+    await Verification.create({
+      userId,
+      otpHash,
+      purpose: "email",
+      expiresAt
+    });
+    await sendVerificationEmail(email, otp);
+    res.json({ message: "OTP sent. Check your email."});
+  } catch (err) {
+    next(err);
+  }
 };
 
 export const verifyOtp = async (req, res, next) => {
@@ -59,7 +92,10 @@ export const verifyOtp = async (req, res, next) => {
     const ok = await bcrypt.compare(otp, rec.otpHash);
     rec.attempts = (rec.attempts || 0) + 1;
     await rec.save();
-    if (!ok) return res.status(400).json({ message: 'Invalid OTP' });
+    if (!ok) {
+      if (rec.attempts >= 5) await rec.deleteOne(); //lockout
+      return res.status(400).json({ message: 'Invalid OTP' });
+    } 
     // mark user verified
     const user = await User.findById(userId);
     user.isVerified = true;
@@ -78,4 +114,42 @@ res.cookie('token', token, {
 });
     res.json({ message: 'Email verified' });
   } catch (err) { next(err); }
+};
+
+export const resendOtp = async (req, res, next) => {
+  try {
+    const { userId, email } = req.body;
+
+    //validate 
+    if (!userId || !email) 
+      return res.status(400).json({ message: "userId and email required" });
+    const user = await User.findById(userId);
+    if (!user)
+      return res.status(404).json({ message: "User not found" });
+
+    //if user is verified no resend
+    if (user.isVerified)
+      return res.status(400).json({ message: "User already verified" });
+
+     // cooldown
+    const lastOtp = await Verification.findOne({ userId, purpose: "email" }).sort({ createdAt: -1 });
+    if (lastOtp && Date.now() - lastOtp.createdAt.getTime() < 60 * 1000) {
+      return res.status(429).json({
+        message: "Please wait 1 minute before requesting another OTP."
+      });
+    }
+    //delete previous otp
+    await Verification.deleteMany({ userId, purpose: "email" });
+    //generate new otp
+    const { otp, otpHash } = await createAndHashOtp();
+    const expiresAt = new Date(Date.now() + 0.5 * 60 * 1000); //30 seconds
+    await Verification.create({
+      userId, otpHash, purpose: "email", expiresAt,
+    });
+
+    await sendVerificationEmail(email, otp);
+    res.json({ message: "A new Otp has been sent to your mail." });
+  } catch (err) {
+    next(err);
+  }
 };
