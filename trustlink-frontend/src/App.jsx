@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useLocation
+} from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
+
 import { checkAuth } from "./api/apiUser";
-import VerificationFlow from './pages/VerificationFlow';
+
+import VerificationFlow from "./pages/VerificationFlow";
 import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
 import Dashboard from "./pages/Dashboard";
-import LandingPage from "./pages/LandingPage"; 
-
+import LandingPage from "./pages/LandingPage";
 
 function AnimatedRoutes({ user, onLogin, onLogout, setUser }) {
   const location = useLocation();
@@ -15,9 +22,9 @@ function AnimatedRoutes({ user, onLogin, onLogout, setUser }) {
   const handleVerificationComplete = (verificationData) => {
     const updatedUser = {
       ...user,
-      verificationStatus: 'completed',
+      verificationStatus: "completed",
       trustScore: verificationData.trustScore,
-      verificationData: verificationData
+      verificationData
     };
     setUser(updatedUser);
   };
@@ -25,8 +32,8 @@ function AnimatedRoutes({ user, onLogin, onLogout, setUser }) {
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        
-        
+
+        {/* LANDING PAGE */}
         <Route
           path="/"
           element={
@@ -106,7 +113,7 @@ function AnimatedRoutes({ user, onLogin, onLogout, setUser }) {
           }
         />
 
-        {/* CATCH ALL - redirect to landing */}
+        {/* CATCH ALL */}
         <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>
@@ -118,41 +125,28 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  
   const handleLogin = (userData) => {
-    const newUser = {
+    setUser({
       ...userData,
-      verificationStatus: userData.verificationStatus || 'pending'
-    };
-    setUser(newUser);
+      verificationStatus: userData.verificationStatus || "pending"
+    });
   };
 
- 
   const handleLogout = async () => {
     try {
-      // Optional: Call backend logout endpoint if you have one
-      // await fetch('http://localhost:1550/api/user/logout', {
-      //   method: 'POST',
-      //   credentials: 'include'
-      // });
+      // optional backend logout
     } catch (err) {
       console.error("Logout error:", err);
     }
     setUser(null);
   };
 
-
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
         const response = await checkAuth();
-        if (response && response.user) {
-          setUser(response.user);
-        } else {
-          setUser(null);
-        }
-      } catch (err) {
-       
+        setUser(response?.user || null);
+      } catch {
         setUser(null);
       } finally {
         setLoading(false);
@@ -163,13 +157,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        fontSize: '1.2rem'
-      }}>
+      <div className="flex items-center justify-center h-screen text-lg">
         Loading...
       </div>
     );
@@ -177,10 +165,10 @@ export default function App() {
 
   return (
     <Router>
-      <AnimatedRoutes 
-        user={user} 
-        onLogin={handleLogin} 
-        onLogout={handleLogout} 
+      <AnimatedRoutes
+        user={user}
+        onLogin={handleLogin}
+        onLogout={handleLogout}
         setUser={setUser}
       />
     </Router>
