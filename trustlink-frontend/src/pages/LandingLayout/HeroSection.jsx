@@ -1,6 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const HeroSection = () => {
+  const navigate = useNavigate();
+
   return (
     <section className="bg-black text-white py-20 relative overflow-hidden min-h-[600px]">
       <style>{`
@@ -48,25 +51,27 @@ const HeroSection = () => {
         <div className="text-center mb-12">
           {/* Badge */}
           <div className="inline-flex items-center px-5 py-2 bg-yellow-300/10 border border-yellow-300/30 rounded-full mb-8">
-            <span className="text-yellow-300 mr-2">🔗</span>
-            <span className="text-sm font-medium text-white">Modernizing Digital Identity</span>
+            <span className="text-yellow-300 mr-2">🛡️</span>
+            <span className="text-sm font-medium text-white">Verify Identity, Not Documents</span>
           </div>
 
           {/* Heading */}
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-            TrustLink® - Connecting the<br />
-            <span className="text-yellow-300">Physical & Digital</span> Seamlessly
+            Decentralized Identity<br />
+            <span className="text-yellow-300">Verification</span> Made Simple
           </h1>
 
           {/* Subheading */}
           <p className="text-gray-400 text-lg md:text-xl max-w-4xl mx-auto mb-10 leading-relaxed">
-            TrustLink® is a digital platform that connects the physical world with the digital, keeping your products,
-            services, and events secure and easy to verify.
+            TrustLink® uses biometric verification and blockchain technology to confirm your identity in seconds—without traditional documents. Secure, fast, and borderless.
           </p>
 
           {/* CTA Button */}
-          <button className="px-10 py-3.5 bg-yellow-300 text-black rounded-full hover:bg-yellow-400 transition-colors text-lg font-semibold inline-flex items-center shadow-lg shadow-yellow-300/30">
-            Learn More
+          <button 
+            onClick={() => navigate('/register')}
+            className="px-10 py-3.5 bg-yellow-300 text-black rounded-full hover:bg-yellow-400 transition-colors text-lg font-semibold inline-flex items-center shadow-lg shadow-yellow-300/30"
+          >
+            Get Started
             <span className="ml-2">→</span>
           </button>
         </div>

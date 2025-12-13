@@ -7,12 +7,23 @@ const Navbar = () => {
   const [isPlatformOpen, setIsPlatformOpen] = useState(false);
   const navigate = useNavigate();
 
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+    setIsPlatformOpen(false); // Close dropdown when menu toggles
+  };
+
+  // Helper function to handle navigation and close menu
+  const navigateAndClose = (path) => {
+    toggleMenu();
+    navigate(path);
+  };
+
   return (
-    <nav className="bg-black text-white mt-5">
+    <nav className="bg-black text-white mt-5 relative z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <div className="flex items-center">
+          {/* Logo - Always visible */}
+          <div className="flex items-center z-50">
             <div className="flex-shrink-0">
               <div className="flex items-center space-x-2">
                 <div className="w-14 h-14 bg-gradient-to-br from-yellow-400 to-yellow-300 rounded-2xl flex items-center justify-center shadow-[0_8px_24px_rgba(255,215,0,0.4)]">
@@ -28,7 +39,7 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* Desktop Menu */}
+          {/* Desktop Menu - (No changes for desktop) */}
           <div className="hidden lg:block">
             <div className="ml-10 flex items-baseline space-x-8">
               <a href="#home" className="text-yellow-300 hover:text-yellow-400 transition-colors font-medium">
@@ -70,7 +81,7 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* Desktop Buttons */}
+          {/* Desktop Buttons - (No changes for desktop) */}
           <div className="hidden lg:flex items-center space-x-4">
             <button
               onClick={() => navigate('/register')}
@@ -86,13 +97,14 @@ const Navbar = () => {
             </button>
           </div>
 
-          {/* Mobile menu button */}
-          <div className="lg:hidden">
+          {/* Mobile menu button - Always visible */}
+          <div className="lg:hidden z-50">
             <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-white hover:text-yellow-300"
+              onClick={toggleMenu}
+              className="text-white hover:text-yellow-300 transition-colors focus:outline-none"
+              aria-label="Toggle menu"
             >
-              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
             </button>
           </div>
         </div>
@@ -100,57 +112,104 @@ const Navbar = () => {
 
       {/* Mobile Menu Overlay */}
       <div
-        className={`lg:hidden fixed inset-0 z-50 bg-black transform transition-transform duration-300 ease-in-out ${
-          isMenuOpen ? 'translate-x-0' : 'translate-x-full'
+        className={`lg:hidden fixed inset-0 bg-black/95 backdrop-blur-sm z-40 transition-all duration-300 ease-in-out ${
+          isMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
         }`}
+        onClick={toggleMenu}
       >
-        <div className="px-2 pt-2 pb-3 space-y-1">
-          <a href="#home" className="block px-3 py-2 text-yellow-300 hover:bg-yellow-300/10 rounded-md transition-colors font-medium">
-            Home
-          </a>
+        {/* Menu Content - Added flex flex-col to enable dynamic layout */}
+        <div
+          className={`fixed top-0 right-0 h-full w-full max-w-md bg-black shadow-2xl transform transition-transform duration-300 ease-in-out **flex flex-col** ${
+            isMenuOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Spacer for navbar height - Adjusting for better visual fit */}
+          <div className="h-16"></div> 
+          
+          {/* Menu Items - **Added flex-grow and overflow-y-auto** to make this the scrollable area */}
+          <div className="px-8 py-6 space-y-3 **flex-grow overflow-y-auto**">
+            <a 
+              href="#home" 
+              onClick={toggleMenu}
+              className="block px-4 py-4 text-yellow-300 hover:bg-yellow-300/10 rounded-xl transition-colors font-medium text-lg"
+            >
+              Home
+            </a>
 
-          <button
-            onClick={() => setIsPlatformOpen(!isPlatformOpen)}
-            className="w-full text-left px-3 py-2 text-white hover:bg-yellow-300/10 hover:text-yellow-300 rounded-md transition-colors font-medium flex items-center justify-between"
-          >
-            TrustLink Platform
-            <ChevronDown className="h-4 w-4" />
-          </button>
+            <div>
+              <button
+                onClick={() => setIsPlatformOpen(!isPlatformOpen)}
+                className="w-full text-left px-4 py-4 text-white hover:bg-yellow-300/10 hover:text-yellow-300 rounded-xl transition-colors font-medium flex items-center justify-between text-lg focus:outline-none"
+              >
+                TrustLink Platform
+                <ChevronDown className={`h-5 w-5 transition-transform ${isPlatformOpen ? 'rotate-180' : ''}`} />
+              </button>
 
-          {isPlatformOpen && (
-            <div className="pl-6 space-y-1">
-              <a href="#platform1" className="block px-3 py-2 text-sm hover:bg-yellow-300/10 hover:text-yellow-300 rounded-md transition-colors">
-                Platform Option 1
-              </a>
-              <a href="#platform2" className="block px-3 py-2 text-sm hover:bg-yellow-300/10 hover:text-yellow-300 rounded-md transition-colors">
-                Platform Option 2
-              </a>
+              {isPlatformOpen && (
+                <div className="pl-6 mt-2 space-y-2">
+                  <a 
+                    href="#platform1" 
+                    onClick={toggleMenu}
+                    className="block px-4 py-3 text-gray-300 hover:bg-yellow-300/10 hover:text-yellow-300 rounded-lg transition-colors"
+                  >
+                    Platform Option 1
+                  </a>
+                  <a 
+                    href="#platform2" 
+                    onClick={toggleMenu}
+                    className="block px-4 py-3 text-gray-300 hover:bg-yellow-300/10 hover:text-yellow-300 rounded-lg transition-colors"
+                  >
+                    Platform Option 2
+                  </a>
+                </div>
+              )}
             </div>
-          )}
 
-          <a href="#sdk" className="block px-3 py-2 text-white hover:bg-yellow-300/10 hover:text-yellow-300 rounded-md transition-colors font-medium">
-            TrustLink SDK
-          </a>
-          <a href="#about" className="block px-3 py-2 text-white hover:bg-yellow-300/10 hover:text-yellow-300 rounded-md transition-colors font-medium">
-            About Us
-          </a>
-          <a href="#blogs" className="block px-3 py-2 text-white hover:bg-yellow-300/10 hover:text-yellow-300 rounded-md transition-colors font-medium">
-            Blogs
-          </a>
-          <a href="#contact" className="block px-3 py-2 text-white hover:bg-yellow-300/10 hover:text-yellow-300 rounded-md transition-colors font-medium">
-            Contact Us
-          </a>
+            <a 
+              href="#sdk" 
+              onClick={toggleMenu}
+              className="block px-4 py-4 text-white hover:bg-yellow-300/10 hover:text-yellow-300 rounded-xl transition-colors font-medium text-lg"
+            >
+              TrustLink SDK
+            </a>
+            <a 
+              href="#about" 
+              onClick={toggleMenu}
+              className="block px-4 py-4 text-white hover:bg-yellow-300/10 hover:text-yellow-300 rounded-xl transition-colors font-medium text-lg"
+            >
+              About Us
+            </a>
+            <a 
+              href="#blogs" 
+              onClick={toggleMenu}
+              className="block px-4 py-4 text-white hover:bg-yellow-300/10 hover:text-yellow-300 rounded-xl transition-colors font-medium text-lg"
+            >
+              Blogs
+            </a>
+            <a 
+              href="#contact" 
+              onClick={toggleMenu}
+              className="block px-4 py-4 text-white hover:bg-yellow-300/10 hover:text-yellow-300 rounded-xl transition-colors font-medium text-lg"
+            >
+              Contact Us
+            </a>
 
-          <div className="pt-4 space-y-2 px-3">
+            {/* A small spacer for better look */}
+            <div className="h-6"></div> 
+          </div>
+
+          {/* Mobile Buttons - **Moved outside the scrollable area** and added padding */}
+          <div className="p-8 space-y-4 flex-shrink-0 border-t border-white/10">
             <button
-              onClick={() => navigate('/register')}
-              className="w-full px-8 py-2.5 bg-yellow-300 text-black rounded-full hover:bg-yellow-400 transition-colors font-semibold"
+              onClick={() => navigateAndClose('/register')}
+              className="w-full px-8 py-4 bg-yellow-300 text-black rounded-full hover:bg-yellow-400 transition-colors font-semibold text-lg"
             >
               Demo
             </button>
             <button
-              onClick={() => navigate('/login')}
-              className="w-full px-8 py-2.5 bg-yellow-300 text-black rounded-full hover:bg-yellow-400 transition-colors font-semibold"
+              onClick={() => navigateAndClose('/login')}
+              className="w-full px-8 py-4 bg-transparent border-2 border-yellow-300 text-yellow-300 rounded-full hover:bg-yellow-300 hover:text-black transition-colors font-semibold text-lg"
             >
               Login
             </button>

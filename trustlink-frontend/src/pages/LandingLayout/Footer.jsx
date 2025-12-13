@@ -1,11 +1,11 @@
 import React from 'react';
-import { Facebook, Twitter, Linkedin, Instagram, ArrowUp, MessageCircle } from 'lucide-react';
+import { Facebook, Twitter, Linkedin, Instagram, ArrowUp, MessageCircle, Mail, Phone } from 'lucide-react';
 
 const Footer = () => {
   return (
     <footer className="bg-black text-white py-12 relative border-t border-yellow-300/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-20">
           {/* Company Info */}
           <div className="lg:col-span-1">
             <div className="mb-4">
@@ -23,7 +23,7 @@ const Footer = () => {
               </div>
             </div>
             <p className="text-gray-400 text-sm mb-6 leading-relaxed">
-              TrustLink® bridges the physical and digital worlds by harnessing multi-patented technology to offer a platform that validates and verifies the authenticity of data for products, services, events, and identities with unmatched transparency.
+              TrustLink® is The next generation of ID verification. Verify identity, not documents. Reimagining digital onboarding with fraud-proof, biometric, and blockchain-based identity confirmation.
             </p>
             
             {/* Social Media Icons */}
@@ -41,22 +41,6 @@ const Footer = () => {
                 <Instagram size={18} />
               </a>
             </div>
-
-            {/* App Store Buttons */}
-            <div className="flex flex-col space-y-2">
-              <a href="#google-play" className="inline-block">
-                {/* Replace with actual Google Play badge image */}
-                <div className="bg-yellow-300 text-black rounded px-4 py-2 text-xs font-semibold hover:bg-yellow-400 transition-colors text-center">
-                  GET IT ON Google Play
-                </div>
-              </a>
-              <a href="#app-store" className="inline-block">
-                {/* Replace with actual App Store badge image */}
-                <div className="bg-yellow-300 text-black rounded px-4 py-2 text-xs font-semibold hover:bg-yellow-400 transition-colors text-center">
-                  Download on the App Store
-                </div>
-              </a>
-            </div>
           </div>
 
           {/* Quick Links */}
@@ -70,9 +54,9 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Products/Applications - Column 1 */}
+          {/* Products- Column 1 */}
           <div>
-            <h3 className="text-lg font-semibold mb-4 text-yellow-300">Products/Applications</h3>
+            <h3 className="text-lg font-semibold mb-4 text-yellow-300">Products</h3>
             <ul className="space-y-2.5">
               <li><a href="#trustlink-id" className="text-gray-400 hover:text-yellow-300 transition-colors text-sm">TrustLink ID</a></li>
               <li><a href="#trustlink-org" className="text-gray-400 hover:text-yellow-300 transition-colors text-sm">TrustLink Org ID</a></li>
@@ -85,9 +69,9 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Products/Applications - Column 2 */}
+          {/* Applications - Column 2 */}
           <div>
-            <h3 className="text-lg font-semibold mb-4 invisible">Products</h3>
+            <h3 className="text-lg font-semibold mb-4 text-yellow-300">Applications</h3>
             <ul className="space-y-2.5">
               <li><a href="#touch-audit" className="text-gray-400 hover:text-yellow-300 transition-colors text-sm">Touch Audit</a></li>
               <li><a href="#token-grading" className="text-gray-400 hover:text-yellow-300 transition-colors text-sm">Token Grading System</a></li>
@@ -108,8 +92,12 @@ const Footer = () => {
 
             <h3 className="text-lg font-semibold mb-4 text-yellow-300">Contact Us</h3>
             <p className="text-gray-400 text-sm flex items-center">
-              <span className="mr-2 text-yellow-300">📞</span>
+              <Phone size={16} className="mr-2 text-yellow-300">📞</Phone>
               +1 (307) 313-6134
+            </p>
+            <p className="text-gray-400 text-sm flex items-center pt-2">
+              <Mail size={16}  className="mr-2 text-yellow-300"></Mail>
+              support@trustlink.com
             </p>
           </div>
         </div>
