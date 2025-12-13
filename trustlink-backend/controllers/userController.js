@@ -16,7 +16,7 @@ export const register = async (req, res, next) => {
     const session = await Session.create({ userId: user._id });
 
     res.json({ userId: user._id, sessionId: session._id, message: 'Registered.' });
-  } catch (err) { next(err); }
+  } catch (err) { next(err); } 
 };
 
 export const login = async (req, res, next) => {

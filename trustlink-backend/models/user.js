@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema({
     isVerified: { type: Boolean, default: false },
     DOB: { type: String, required: true },
     Address: { type: String, required: true },
-    phoneNumber: { type: Number, required: true },
+    phoneNumber: { type: String, required: true },
     primaryDeviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Device', default: null },
     trustScore: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now }
