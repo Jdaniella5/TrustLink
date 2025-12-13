@@ -1,23 +1,20 @@
 // src/pages/VerificationFlow.jsx
-// FIXED: Now properly calls parent's onVerificationComplete to update App.jsx state
+// Updated to show overview page first, then navigate to individual verification steps
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  CheckCircle, 
-  Circle, 
   Loader, 
   Camera, 
   MapPin, 
   Smartphone, 
   Mail, 
   Users,
-  Award,
-  ArrowLeft,
-  ArrowRight
+  Award
 } from 'lucide-react';
 
 // Import verification components
+import VerificationOverview from '../components/verification/VerificationOverview';
 import LivenessDetection from '../components/verification/LivenessDetection';
 import GPSTracking from '../components/verification/GPSTracking';
 import DeviceFingerprint from '../components/verification/DeviceFingerprint';
@@ -27,7 +24,6 @@ import TrustScore from '../components/verification/TrustScore';
 
 import { getVerificationProgress } from '../services/api';
 
-// FIXED: Added onVerificationComplete prop
 const VerificationFlow = ({ onVerificationComplete }) => {
   const navigate = useNavigate();
 
@@ -35,6 +31,10 @@ const VerificationFlow = ({ onVerificationComplete }) => {
   const [sessionId] = useState(() => {
     return sessionStorage.getItem('sessionId') || 'demo_session_123';
   });
+
+  // Show overview page or individual step
+  const [showOverview, setShowOverview] = useState(true);
+  const [selectedStep, setSelectedStep] = useState(null);
 
   // Current step in verification process
   const [currentStep, setCurrentStep] = useState(0);
@@ -130,14 +130,6 @@ const VerificationFlow = ({ onVerificationComplete }) => {
       // Update step status based on what's already completed
       setStepStatus(progress);
       
-      // Find first incomplete step
-      const firstIncompleteIndex = VERIFICATION_STEPS.findIndex(
-        step => !progress[step.id]
-      );
-      
-      // Set current step to first incomplete, or last step if all complete
-      setCurrentStep(firstIncompleteIndex >= 0 ? firstIncompleteIndex : VERIFICATION_STEPS.length - 1);
-      
     } catch (err) {
       console.error('Failed to load progress:', err);
       // Continue with fresh state if loading fails
@@ -151,11 +143,24 @@ const VerificationFlow = ({ onVerificationComplete }) => {
   // =============================================================================
 
   /**
+   * Handle click on a step from the overview page
+   * @param {string} stepId - ID of the step to navigate to
+   */
+  const handleStepClick = (stepId) => {
+    setSelectedStep(stepId);
+    setShowOverview(false);
+    
+    // Find the step index
+    const stepIndex = VERIFICATION_STEPS.findIndex(step => step.id === stepId);
+    setCurrentStep(stepIndex);
+  };
+
+  /**
    * Handle completion of current verification step
    * @param {Object} data - Data returned from verification component
    */
   const handleStepComplete = (data) => {
-    const currentStepId = VERIFICATION_STEPS[currentStep].id;
+    const currentStepId = selectedStep;
     
     console.log(`✓ Step completed: ${currentStepId}`, data);
 
@@ -165,15 +170,14 @@ const VerificationFlow = ({ onVerificationComplete }) => {
       [currentStepId]: true
     }));
 
-    // Move to next step
-    if (currentStep < VERIFICATION_STEPS.length - 1) {
-      setCurrentStep(prev => prev + 1);
-    }
+    // Return to overview
+    setShowOverview(true);
+    setSelectedStep(null);
   };
 
   /**
    * Handle completion of TrustScore verification
-   * FIXED: Now calls parent's onVerificationComplete to update App.jsx state
+   * This is called when all verification steps are complete
    */
   const handleVerificationComplete = (data) => {
     console.log('🎉 All verification steps completed!', data);
@@ -184,61 +188,9 @@ const VerificationFlow = ({ onVerificationComplete }) => {
       trustScore: true
     }));
 
-    // CRITICAL FIX: Call parent's callback to update user state in App.jsx
-    // This updates verificationStatus to 'completed' so routing works correctly
+    // Call parent's callback to update user state in App.jsx
     if (onVerificationComplete) {
       onVerificationComplete(data);
-    }
-  };
-
-  /**
-   * Skip current step (for testing purposes - remove in production)
-   */
-  const skipCurrentStep = () => {
-    const currentStepId = VERIFICATION_STEPS[currentStep].id;
-    
-    // Mark as complete
-    setStepStatus(prev => ({
-      ...prev,
-      [currentStepId]: true
-    }));
-
-    // Move to next step
-    if (currentStep < VERIFICATION_STEPS.length - 1) {
-      setCurrentStep(prev => prev + 1);
-    }
-  };
-
-  /**
-   * Go back to previous step
-   */
-  const goToPreviousStep = () => {
-    // Cannot go back from trust score step
-    if (currentStep > 0 && currentStep !== VERIFICATION_STEPS.length - 1) {
-      setCurrentStep(prev => prev - 1);
-    }
-  };
-
-  /**
-   * Navigate to specific step (only if previous steps are complete)
-   * @param {number} stepIndex - Index of step to navigate to
-   */
-  const goToStep = (stepIndex) => {
-    // Cannot navigate to trust score until all verification steps are complete
-    if (stepIndex === VERIFICATION_STEPS.length - 1) {
-      const allStepsComplete = VERIFICATION_STEPS.slice(0, -1).every(
-        step => stepStatus[step.id]
-      );
-      if (!allStepsComplete) return;
-    }
-
-    // Check if all previous steps are complete
-    const canNavigate = VERIFICATION_STEPS.slice(0, stepIndex).every(
-      (step, index) => stepStatus[step.id] || index === currentStep
-    );
-
-    if (canNavigate) {
-      setCurrentStep(stepIndex);
     }
   };
 
@@ -254,6 +206,8 @@ const VerificationFlow = ({ onVerificationComplete }) => {
     return Math.round((completedSteps / VERIFICATION_STEPS.length) * 100);
   };
 
+  const overallProgress = calculateProgress();
+
   // =============================================================================
   // RENDER COMPONENTS
   // =============================================================================
@@ -268,21 +222,77 @@ const VerificationFlow = ({ onVerificationComplete }) => {
     if (!StepComponent) {
       // Placeholder for components not yet created
       return (
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-            <step.icon size={40} className="text-gray-400" />
+        <div style={{
+          minHeight: '100vh',
+          background: '#000000',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'linear-gradient(145deg, #1a1a1a 0%, #0f0f0f 100%)',
+            borderRadius: '24px',
+            padding: '40px',
+            maxWidth: '600px',
+            width: '100%',
+            textAlign: 'center',
+            border: '2px solid rgba(255, 215, 0, 0.3)'
+          }}>
+            <div style={{
+              width: '80px',
+              height: '80px',
+              background: '#2a2a2a',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 24px'
+            }}>
+              <step.icon size={40} color="#666" />
+            </div>
+            <h3 style={{
+              fontSize: '28px',
+              fontWeight: '700',
+              color: '#ffffff',
+              marginBottom: '16px'
+            }}>
+              {step.title}
+            </h3>
+            <p style={{
+              fontSize: '16px',
+              color: '#a0a0a0',
+              marginBottom: '32px'
+            }}>
+              {step.description}
+            </p>
+            <p style={{
+              fontSize: '14px',
+              color: '#666',
+              marginBottom: '32px'
+            }}>
+              This component will be implemented next.
+            </p>
+            <button
+              onClick={() => {
+                setShowOverview(true);
+                setSelectedStep(null);
+              }}
+              style={{
+                padding: '16px 32px',
+                background: 'linear-gradient(135deg, #ffd700 0%, #ffed4e 100%)',
+                border: '2px solid #ffd700',
+                borderRadius: '12px',
+                fontSize: '16px',
+                fontWeight: '700',
+                color: '#0a0a0a',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              Back to Overview
+            </button>
           </div>
-          <h3 className="text-2xl font-bold text-gray-800 mb-2">{step.title}</h3>
-          <p className="text-gray-600 mb-6">{step.description}</p>
-          <p className="text-sm text-gray-500 mb-6">
-            This component will be implemented next.
-          </p>
-          <button
-            onClick={skipCurrentStep}
-            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
-          >
-            Skip for Now (Testing)
-          </button>
         </div>
       );
     }
@@ -313,10 +323,28 @@ const VerificationFlow = ({ onVerificationComplete }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader className="animate-spin mx-auto mb-4 text-blue-500" size={48} />
-          <p className="text-gray-600 text-lg">Loading verification progress...</p>
+      <div style={{
+        minHeight: '100vh',
+        background: '#000000',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <Loader 
+            style={{
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 16px'
+            }} 
+            size={48} 
+            color="#ffd700" 
+          />
+          <p style={{
+            fontSize: '18px',
+            color: '#a0a0a0'
+          }}>
+            Loading verification progress...
+          </p>
         </div>
       </div>
     );
@@ -326,169 +354,27 @@ const VerificationFlow = ({ onVerificationComplete }) => {
   // MAIN RENDER
   // =============================================================================
 
-  const currentStepData = VERIFICATION_STEPS[currentStep];
-  const overallProgress = calculateProgress();
-  const isTrustScoreStep = currentStep === VERIFICATION_STEPS.length - 1;
-  const allVerificationStepsComplete = VERIFICATION_STEPS.slice(0, -1).every(
-    step => stepStatus[step.id]
-  );
-
   return (
-    <div className="min-h-screen lg:px-50 px-0 bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4">
-        {/* Header with Progress */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800">TrustLink Verification</h1>
-              <p className="text-gray-600 mt-1">
-                {isTrustScoreStep 
-                  ? 'View your Trust Score and verification results'
-                  : 'Complete all steps to get your Trust Score'}
-              </p>
-            </div>
-            <div className="text-right">
-              <div className="text-4xl font-bold text-blue-500">{overallProgress}%</div>
-              <p className="text-sm text-gray-600">Complete</p>
-            </div>
-          </div>
+    <>
+      {showOverview ? (
+        // Show verification overview page
+        <VerificationOverview 
+          stepStatus={stepStatus}
+          onStepClick={handleStepClick}
+          overallProgress={overallProgress}
+        />
+      ) : (
+        // Show individual verification step
+        renderCurrentStep()
+      )}
 
-          {/* Overall Progress Bar */}
-          <div className="w-full bg-gray-200 rounded-full h-3">
-            <div
-              className="bg-blue-500 h-3 rounded-full transition-all duration-500"
-              style={{ width: `${overallProgress}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Step Navigator */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex items-center justify-between">
-            {VERIFICATION_STEPS.map((step, index) => {
-              const isComplete = stepStatus[step.id];
-              const isCurrent = index === currentStep;
-              const Icon = step.icon;
-              
-              // Trust Score can only be accessed if all verification steps are complete
-              const isTrustScoreStep = step.id === 'trustScore';
-              const canAccess = isTrustScoreStep 
-                ? allVerificationStepsComplete
-                : VERIFICATION_STEPS.slice(0, index).every(
-                    (s, i) => stepStatus[s.id] || i === currentStep
-                  );
-
-              return (
-                <React.Fragment key={step.id}>
-                  {/* Step Circle */}
-                  <button
-                    onClick={() => goToStep(index)}
-                    disabled={!canAccess}
-                    className={`flex flex-col items-center gap-2 transition ${
-                      canAccess ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
-                    }`}
-                    title={!canAccess && isTrustScoreStep ? 'Complete all verification steps first' : ''}
-                  >
-                    <div
-                      className={`w-16 h-16 rounded-full flex items-center justify-center transition ${
-                        isComplete
-                          ? 'bg-green-500 text-white'
-                          : isCurrent
-                          ? `bg-${step.color}-500 text-white`
-                          : 'bg-gray-200 text-gray-400'
-                      }`}
-                    >
-                      {isComplete ? (
-                        <CheckCircle size={32} />
-                      ) : (
-                        <Icon size={32} />
-                      )}
-                    </div>
-                    <div className="text-center">
-                      <p className={`text-xs font-medium ${
-                        isCurrent ? 'text-gray-800' : 'text-gray-600'
-                      }`}>
-                        {step.title.split(' ')[0]}
-                      </p>
-                      {isCurrent && (
-                        <p className="text-xs text-blue-500 font-semibold">Current</p>
-                      )}
-                    </div>
-                  </button>
-
-                  {/* Connecting Line */}
-                  {index < VERIFICATION_STEPS.length - 1 && (
-                    <div className="flex-1 h-1 mx-2">
-                      <div
-                        className={`h-full rounded ${
-                          stepStatus[step.id] ? 'bg-green-500' : 'bg-gray-200'
-                        }`}
-                      />
-                    </div>
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Current Step Info */}
-        <div className={`border rounded-lg p-4 mb-6 ${
-          isTrustScoreStep
-            ? 'bg-yellow-50 border-yellow-200'
-            : 'bg-blue-50 border-blue-200'
-        }`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 bg-${currentStepData.color}-500 rounded-full flex items-center justify-center`}>
-                <currentStepData.icon size={20} className="text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-800">{currentStepData.title}</h3>
-                <p className="text-sm text-gray-600">{currentStepData.description}</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-600">Estimated time</p>
-              <p className="font-semibold text-gray-800">{currentStepData.estimatedTime}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Current Step Component */}
-        <div className="mb-6">
-          {renderCurrentStep()}
-        </div>
-
-        {/* Navigation Buttons */}
-        {!isTrustScoreStep && (
-          <div className="flex items-center justify-between">
-            <button
-              onClick={goToPreviousStep}
-              disabled={currentStep === 0}
-              className="flex items-center gap-2 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ArrowLeft size={20} />
-              Previous
-            </button>
-
-            <div className="text-center">
-              <p className="text-sm text-gray-600">
-                Step {currentStep + 1} of {VERIFICATION_STEPS.length}
-              </p>
-            </div>
-
-            <button
-              onClick={skipCurrentStep}
-              className="flex items-center gap-2 px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition"
-            >
-              Skip (Testing)
-              <ArrowRight size={20} />
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </>
   );
 };
 

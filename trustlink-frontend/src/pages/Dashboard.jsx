@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Home, Building2, IdCard, FileText, User, Clock, LogOut, Menu, X, CheckCircle, Shield } from 'lucide-react';
 
-const Dashboard = () => {
+const Dashboard = ({ onLogout}) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('home');
   
@@ -24,11 +24,7 @@ const Dashboard = () => {
     { id: 'sessions', label: 'Sessions', icon: Clock },
   ];
 
-  const handleLogout = () => {
-    console.log('Logout clicked');
-    // Add your logout logic here
-  };
-
+  
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
@@ -66,7 +62,7 @@ const Dashboard = () => {
         {/* Logout Button */}
         <div className="p-6 border-t border-blue-500">
           <button
-            onClick={handleLogout}
+            onClick={onLogout}
             className="w-full flex items-center gap-4 px-6 py-3 hover:bg-blue-500 rounded-lg transition"
           >
             <LogOut size={20} />

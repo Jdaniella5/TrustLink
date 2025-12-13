@@ -1,41 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './components/auth/Login';
-import Register from './components/auth/Register';
+import React, { useState, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
+import { checkAuth } from "./api/apiUser";
 import VerificationFlow from './pages/VerificationFlow';
-import Dashboard from './pages/Dashboard';
+import Login from "./components/auth/Login";
+import Register from "./components/auth/Register";
+import Dashboard from "./pages/Dashboard";
+import LandingPage from "./pages/LandingPage"; 
 
-export default function App() {
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Check if user is logged in on app load
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        console.error('Failed to parse stored user:', error);
-      }
-    }
-    setIsLoading(false);
-  }, []);
-
-  const handleLogin = (userData) => {
-    // Make sure new users don't have verification status set yet
-    const newUser = {
-      ...userData,
-      verificationStatus: userData.verificationStatus || 'pending'
-    };
-    setUser(newUser);
-    localStorage.setItem('user', JSON.stringify(newUser));
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
-  };
+function AnimatedRoutes({ user, onLogin, onLogout, setUser }) {
+  const location = useLocation();
 
   const handleVerificationComplete = (verificationData) => {
     const updatedUser = {
@@ -45,60 +20,169 @@ export default function App() {
       verificationData: verificationData
     };
     setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
-  if (isLoading) {
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        
+        
+        <Route
+          path="/"
+          element={
+            user ? (
+              user.verificationStatus === "completed" ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
+                <Navigate to="/verify" replace />
+              )
+            ) : (
+              <LandingPage />
+            )
+          }
+        />
+
+        {/* LOGIN */}
+        <Route
+          path="/login"
+          element={
+            user ? (
+              user.verificationStatus === "completed" ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
+                <Navigate to="/verify" replace />
+              )
+            ) : (
+              <Login onLogin={onLogin} />
+            )
+          }
+        />
+
+        {/* REGISTER */}
+        <Route
+          path="/register"
+          element={
+            user ? (
+              user.verificationStatus === "completed" ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
+                <Navigate to="/verify" replace />
+              )
+            ) : (
+              <Register onLogin={onLogin} />
+            )
+          }
+        />
+
+        {/* VERIFICATION FLOW */}
+        <Route
+          path="/verify"
+          element={
+            !user ? (
+              <Navigate to="/login" replace />
+            ) : user.verificationStatus === "completed" ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <VerificationFlow
+                user={user}
+                onVerificationComplete={handleVerificationComplete}
+                onLogout={onLogout}
+              />
+            )
+          }
+        />
+
+        {/* DASHBOARD */}
+        <Route
+          path="/dashboard"
+          element={
+            !user ? (
+              <Navigate to="/login" replace />
+            ) : user.verificationStatus !== "completed" ? (
+              <Navigate to="/verify" replace />
+            ) : (
+              <Dashboard user={user} onLogout={onLogout} />
+            )
+          }
+        />
+
+        {/* CATCH ALL - redirect to landing */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+
+      </Routes>
+    </AnimatePresence>
+  );
+}
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  
+  const handleLogin = (userData) => {
+    const newUser = {
+      ...userData,
+      verificationStatus: userData.verificationStatus || 'pending'
+    };
+    setUser(newUser);
+  };
+
+ 
+  const handleLogout = async () => {
+    try {
+      // Optional: Call backend logout endpoint if you have one
+      // await fetch('http://localhost:1550/api/user/logout', {
+      //   method: 'POST',
+      //   credentials: 'include'
+      // });
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+    setUser(null);
+  };
+
+
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const response = await checkAuth();
+        if (response && response.user) {
+          setUser(response.user);
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+       
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkAuthStatus();
+  }, []);
+
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        fontSize: '1.2rem'
+      }}>
+        Loading...
       </div>
     );
   }
 
   return (
     <Router>
-      <Routes>
-        {/* Public Routes */}
-        <Route 
-          path="/login" 
-          element={user ? <Navigate to={user.verificationStatus === 'completed' ? "/dashboard" : "/verify"} replace /> : <Login onLogin={handleLogin} />} 
-        />
-        <Route 
-          path="/register" 
-          element={user ? <Navigate to={user.verificationStatus === 'completed' ? "/dashboard" : "/verify"} replace /> : <Register onLogin={handleLogin} />} 
-        />
-
-        {/* Protected Routes - redirect to login if no user */}
-        <Route
-          path="/verify"
-          element={user ? <VerificationFlow 
-            user={user}
-            onVerificationComplete={handleVerificationComplete}
-            onLogout={handleLogout}
-          /> : <Navigate to="/login" replace />}
-        />
-
-        <Route
-          path="/dashboard"
-          element={user && user.verificationStatus === 'completed' ? <Dashboard 
-            user={user}
-            onLogout={handleLogout}
-          /> : user ? <Navigate to="/verify" replace /> : <Navigate to="/login" replace />}
-        />
-
-        {/* Default Route */}
-        <Route path="/" element={
-          user ? (user.verificationStatus === 'completed' ? <Navigate to="/dashboard" replace /> : <Navigate to="/verify" replace />) 
-          : <Navigate to="/login" replace />
-        } />
-
-        {/* 404 Route */}
-        <Route path="*" element={
-          user ? (user.verificationStatus === 'completed' ? <Navigate to="/dashboard" replace /> : <Navigate to="/verify" replace />) 
-          : <Navigate to="/login" replace />
-        } />
-      </Routes>
+      <AnimatedRoutes 
+        user={user} 
+        onLogin={handleLogin} 
+        onLogout={handleLogout} 
+        setUser={setUser}
+      />
     </Router>
   );
 }
