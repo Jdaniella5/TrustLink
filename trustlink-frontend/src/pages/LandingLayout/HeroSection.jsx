@@ -57,7 +57,7 @@ const HeroSection = () => {
 
           {/* Heading */}
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-            Decentralized Identity<br />
+            Decentralised Identity<br />
             <span className="text-yellow-300">Verification</span> Made Simple
           </h1>
 
