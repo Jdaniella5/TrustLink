@@ -31,17 +31,19 @@ const Register = ({ onLogin }) => {
         password,
         DOB: `${year}-${month}-${day}`,
         Address:`${streetAddress}, ${city}, ${state}, ${postalCode}, ${country}`,
-        phoneNumber: Number(phoneNumber),
+        phoneNumber: phoneNumber,
       };
       
      const res = await registerUser(data);
+     
       onLogin(res.user);
       navigate("/login"); 
     } catch (error) {
       console.error("Registration failed", error);
+       setError(error.message || "Registration failed");
     }
   };
-
+ 
   return (
     <motion.div
       initial={{ y: 0, opacity: 1 }}
@@ -90,7 +92,9 @@ const Register = ({ onLogin }) => {
         className="absolute inset-0 bg-gradient-to-br from-yellow-400 via-transparent to-yellow-600"
       />
     </div>
-
+         {error && (
+          <div className="text-red-500 text-sm mb-4">{error}</div>
+        )}
       <div className=" ">
         {/* Logo Section */}
         <motion.div

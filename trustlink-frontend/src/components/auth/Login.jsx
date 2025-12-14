@@ -1,26 +1,52 @@
 import React, { useState } from 'react'
 import { motion } from "framer-motion"
 import { loginUser } from '../../api/apiUser'
+import { useNavigate } from "react-router-dom" // ADD THIS IMPORT
 
 const Login = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(''); // ADD THIS FOR ERROR DISPLAY
+  const navigate = useNavigate(); // ADD THIS
 
-  const handleSubmit = async (e) =>{
-    e.preventDefault();
-    setIsLoading(true);
-    const data = { email, password };
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  setIsLoading(true);
+  setError(''); // Clear previous errors
+  
+  const data = { email, password };
 
-    try {
-      const res = await loginUser(data);
-      onLogin(res.user);
-    } catch (error) {
-      console.error("Login failed");
-    } finally {
-      setIsLoading(false);
+  try {
+    const res = await loginUser(data);
+    
+    console.log('📥 LOGIN RESPONSE:', res); // Debug log
+    
+    // FIXED: Check for userId instead of user
+    if (res && res.userId) {
+      // Create a user object from the response
+      const user = {
+        id: res.userId,
+        email: email, // Use the email from the form
+        sessionId: res.sessionId
+      };
+      
+      sessionStorage.setItem('user', JSON.stringify(user));
+      console.log('✅ User saved to sessionStorage:', user);
+      
+      onLogin(user);
+      navigate("/verify");
+    } else {
+      throw new Error('No user data received');
     }
-  };
+    
+  } catch (error) {
+    console.error("Login failed:", error);
+    setError(error.message || "Login failed. Please try again.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-black relative overflow-hidden flex items-center justify-center px-4 py-12">
@@ -113,6 +139,13 @@ const Login = ({ onLogin }) => {
           transition={{ delay: 0.5, duration: 0.6 }}
           className="bg-[rgba(18,18,18,0.95)] backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-[#2a2a2a]"
         >
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-900/20 border-2 border-red-500/50 rounded-xl">
+              <p className="text-red-300 text-sm">{error}</p>
+            </div>
+          )}
+
           <div className="space-y-6">
             {/* Email */}
             <div>

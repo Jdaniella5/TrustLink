@@ -1,5 +1,6 @@
 // src/pages/VerificationFlow.jsx
 // Updated to show overview page first, then navigate to individual verification steps
+// Now supports background GPS tracking across all pages
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -23,6 +24,46 @@ import CommunityVouch from '../components/verification/CommunityVouch';
 import TrustScore from '../components/verification/TrustScore';
 
 import { getVerificationProgress } from '../services/api';
+
+// Timer Widget Component - Shown globally when GPS is active
+const TimerWidget = ({ timeRemaining, onGameClick }) => {
+  const formatTime = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${secs}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${secs}s`;
+    } else {
+      return `${secs}s`;
+    }
+  };
+
+  return (
+    <div className="fixed top-4 right-4 z-40 flex gap-3">
+      {/* Timer */}
+      <div className="px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-300 text-black font-bold rounded-lg shadow-[0_0_20px_rgba(255,215,0,0.3)] border-2 border-yellow-500">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">⏱️</span>
+          <span className="text-sm">{formatTime(timeRemaining)}</span>
+        </div>
+      </div>
+
+      {/* Game Button */}
+      {onGameClick && (
+        <button
+          onClick={onGameClick}
+          className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-lg hover:shadow-[0_0_20px_rgba(168,85,247,0.5)] transition-all flex items-center gap-2 text-sm animate-pulse"
+        >
+          <span>🎮</span>
+          Play
+        </button>
+      )}
+    </div>
+  );
+};
 
 const VerificationFlow = ({ onVerificationComplete }) => {
   const navigate = useNavigate();
@@ -48,6 +89,10 @@ const VerificationFlow = ({ onVerificationComplete }) => {
     community: false,     // Community vouches
     trustScore: false     // Final score
   });
+
+  // Track GPS tracking state across navigation
+  const [gpsTrackingActive, setGpsTrackingActive] = useState(false);
+  const [gpsTrackingData, setGpsTrackingData] = useState(null);
 
   // Loading state
   const [isLoading, setIsLoading] = useState(true);
@@ -139,6 +184,44 @@ const VerificationFlow = ({ onVerificationComplete }) => {
   };
 
   // =============================================================================
+  // GPS TRACKING MANAGEMENT
+  // =============================================================================
+
+  /**
+   * Update GPS timer every second
+   */
+  useEffect(() => {
+    if (!gpsTrackingActive || !gpsTrackingData) return;
+
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - gpsTrackingData.startTime) / 1000);
+      const remaining = Math.max(gpsTrackingData.duration - elapsed, 0);
+
+      setGpsTrackingData(prev => ({
+        ...prev,
+        timeRemaining: remaining
+      }));
+
+      // GPS tracking completed
+      if (remaining === 0) {
+        console.log('🎉 GPS tracking completed!');
+        setGpsTrackingActive(false);
+        setGpsTrackingData(null);
+        
+        // Mark address verification as complete
+        setStepStatus(prev => ({
+          ...prev,
+          address: true
+        }));
+
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [gpsTrackingActive, gpsTrackingData]);
+
+  // =============================================================================
   // STEP NAVIGATION
   // =============================================================================
 
@@ -170,9 +253,25 @@ const VerificationFlow = ({ onVerificationComplete }) => {
       [currentStepId]: true
     }));
 
+    // If GPS tracking completed, clear the active state
+    if (currentStepId === 'address') {
+      setGpsTrackingActive(false);
+      setGpsTrackingData(null);
+    }
+
     // Return to overview
     setShowOverview(true);
     setSelectedStep(null);
+  };
+
+  /**
+   * Handle GPS tracking started - allows continuation to other steps
+   * @param {Object} trackingInfo - Information about the tracking session
+   */
+  const handleGpsTrackingStarted = (trackingInfo) => {
+    console.log('GPS tracking started, user can continue to other steps', trackingInfo);
+    setGpsTrackingActive(true);
+    setGpsTrackingData(trackingInfo);
   };
 
   /**
@@ -313,6 +412,14 @@ const VerificationFlow = ({ onVerificationComplete }) => {
       <StepComponent 
         sessionId={sessionId} 
         onComplete={handleStepComplete}
+        onNext={() => {
+          setShowOverview(true);
+          setSelectedStep(null);
+        }}
+        // Pass GPS tracking props for GPSTracking component
+        onTrackingStarted={step.id === 'address' ? handleGpsTrackingStarted : undefined}
+        gpsTrackingActive={gpsTrackingActive}
+        gpsTrackingData={gpsTrackingData}
       />
     );
   };
@@ -362,10 +469,22 @@ const VerificationFlow = ({ onVerificationComplete }) => {
           stepStatus={stepStatus}
           onStepClick={handleStepClick}
           overallProgress={overallProgress}
+          gpsTrackingActive={gpsTrackingActive}
         />
       ) : (
         // Show individual verification step
         renderCurrentStep()
+      )}
+
+      {/* Global GPS Timer Widget - Shows on all pages when GPS is active */}
+      {gpsTrackingActive && gpsTrackingData && (
+        <TimerWidget 
+          timeRemaining={gpsTrackingData.timeRemaining}
+          onGameClick={() => {
+            // This could open the game globally
+            console.log('Game clicked from global widget - implement game modal here');
+          }}
+        />
       )}
 
       <style>{`

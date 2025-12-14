@@ -132,14 +132,7 @@ export default function App() {
     });
   };
 
-  const handleLogout = async () => {
-    try {
-      // optional backend logout
-    } catch (err) {
-      console.error("Logout error:", err);
-    }
-    setUser(null);
-  };
+ 
 
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -168,7 +161,6 @@ export default function App() {
       <AnimatedRoutes
         user={user}
         onLogin={handleLogin}
-        onLogout={handleLogout}
         setUser={setUser}
       />
     </Router>
