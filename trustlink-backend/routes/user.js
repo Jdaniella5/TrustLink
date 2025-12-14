@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, login, sendVerificationOtp, verifyOtp, resendOtp } from '../controllers/userController.js';
+import { register, login, sendVerificationOtp, verifyOtp, resendOtp, logout } from '../controllers/userController.js';
 import rateLimiter from "../middleware/rateLimiter.js";
 import auth from '../middleware/authMiddleware.js';
 import User from '../models/user.js';
@@ -33,5 +33,6 @@ r.get('/check', auth, async (req, res, next) => {
     next(err);
   }
 });
+r.post("/logout", auth, logout);
 
 export default r;

@@ -5,6 +5,8 @@ import Verification from '../models/verificationModel.js';
 import { createAndHashOtp } from '../utils/generateOtp.js';
 import { sendVerificationEmail } from '../utils/sendVerificationEmail.js';
 import { randomBytes } from 'crypto';
+import Device from '../models/deviceModel.js';
+import { hashFingerprint } from '../utils/deviceFingerprint.js';
 
 export const register = async (req, res, next) => {
   try {
@@ -16,7 +18,7 @@ export const register = async (req, res, next) => {
     const session = await Session.create({ userId: user._id });
 
     res.json({ userId: user._id, sessionId: session._id, message: 'Registered.' });
-  } catch (err) { next(err); } 
+  } catch (err) { next(err); }
 };
 
 export const login = async (req, res, next) => {
@@ -46,10 +48,30 @@ export const login = async (req, res, next) => {
     u.loginAttempts = 0;
     u.lockUntil = null;
     await u.save();
-   const session = await Session.findOne({ userId: u._id }).sort({ createdAt: -1 });
+    /*
+    const fingerprintHash = hashFingerprint(deviceMeta);
+    const devices = await Device.find({ userId: u._id });
+
+    const knownDevice = devices.find(d => d.fingerprintHash === fingerprintHash);
+
+    if (!knownDevice) {
+      if (devices.length >= 2) {
+        return res.status(403).json({
+          message: "Device limit reached. Delete a device to continue"
+        });
+      }
+      return res.status(401).json({
+        requiresVerification: true,
+        message: "New device detected. Re-verifiy"
+      });
+    }*/
+
+    //when device is known create session
+    const session = await Session.create({ userId: u._id, /*primaryDeviceId: knownDevice._id*/ });
+
     // create JWT
     const jwt = (await import('jsonwebtoken')).default;
-    const token = jwt.sign({ userId: u._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: u._id, sessionId: session._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.cookie('token', token, {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
@@ -151,5 +173,27 @@ export const resendOtp = async (req, res, next) => {
     res.json({ message: "A new Otp has been sent to your mail." });
   } catch (err) {
     next(err);
+  }
+};
+
+export const logout = async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+
+    if (sessionId) {
+      await Session.findByIdAndUpdate(sessionId, {
+        expiresAt: new Date()
+      });
+    }
+
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Strict"
+    });
+
+    res.json({ message: "Logged out successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Logout failed" });
   }
 };
