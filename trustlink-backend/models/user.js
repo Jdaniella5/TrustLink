@@ -1,18 +1,20 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
-import { stringify } from "querystring";
 
 const userSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    isVerified: { type: Boolean, default: false },
     DOB: { type: String, required: true },
     Address: { type: String, required: true },
     phoneNumber: { type: String, required: true },
+    isVerified: { type: Boolean, default: false },
     primaryDeviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Device', default: null },
     trustScore: { type: Number, default: 0 },
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type: Date, default: Date.now },
+    loginAttempts: { type: Number, default: 0 },
+    loginAttempts: { type: Number, default: 0 },
+    lockUntil: Date
 }, { timestamps: true });
 
 //hash passowrd
