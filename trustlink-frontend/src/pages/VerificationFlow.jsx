@@ -73,6 +73,13 @@ const VerificationFlow = ({ onVerificationComplete }) => {
     return sessionStorage.getItem('sessionId') || 'demo_session_123';
   });
 
+  // ✅ ADDED - Get userId from sessionStorage
+  const [userId] = useState(() => {
+    const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+    console.log('📋 Loading userId from sessionStorage:', user.id);
+    return user.id || null;
+  });
+
   // Show overview page or individual step
   const [showOverview, setShowOverview] = useState(true);
   const [selectedStep, setSelectedStep] = useState(null);
@@ -400,17 +407,19 @@ const VerificationFlow = ({ onVerificationComplete }) => {
     if (step.id === 'trustScore') {
       return (
         <TrustScore 
-          sessionId={sessionId} 
+          sessionId={sessionId}
+          userId={userId}  // ✅ ADDED
           onComplete={handleVerificationComplete}
           navigate={navigate}
         />
       );
     }
 
-    // Render other verification components
+    // ✅ UPDATED - Pass userId to all components
     return (
       <StepComponent 
-        sessionId={sessionId} 
+        sessionId={sessionId}
+        userId={userId}  // ✅ ADDED - This is the key change!
         onComplete={handleStepComplete}
         onNext={() => {
           setShowOverview(true);
@@ -457,14 +466,11 @@ const VerificationFlow = ({ onVerificationComplete }) => {
     );
   }
 
-  // =============================================================================
-  // MAIN RENDER
-  // =============================================================================
+  
 
   return (
     <>
       {showOverview ? (
-        // Show verification overview page
         <VerificationOverview 
           stepStatus={stepStatus}
           onStepClick={handleStepClick}
@@ -472,11 +478,10 @@ const VerificationFlow = ({ onVerificationComplete }) => {
           gpsTrackingActive={gpsTrackingActive}
         />
       ) : (
-        // Show individual verification step
+
         renderCurrentStep()
       )}
 
-      {/* Global GPS Timer Widget - Shows on all pages when GPS is active */}
       {gpsTrackingActive && gpsTrackingData && (
         <TimerWidget 
           timeRemaining={gpsTrackingData.timeRemaining}

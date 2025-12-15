@@ -18,10 +18,12 @@ const Register = ({ onLogin }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [terms, setTerms] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(''); // Clear previous errors
 
     try {
       // Only send what the backend accepts
@@ -34,13 +36,25 @@ const Register = ({ onLogin }) => {
         phoneNumber: phoneNumber,
       };
       
-     const res = await registerUser(data);
-     
-      onLogin(res.user);
-      navigate("/login"); 
+      const res = await registerUser(data);
+      
+      // ✅ FIXED: Create user object from response (not res.user)
+      if (res && res.userId) {
+        const user = {
+          id: res.userId,
+          email: email,
+          sessionId: res.sessionId,
+          verificationStatus: 'pending' // New users need verification
+        };
+        
+        onLogin(user);
+        navigate("/login"); 
+      } else {
+        throw new Error('Registration failed');
+      }
     } catch (error) {
       console.error("Registration failed", error);
-       setError(error.message || "Registration failed");
+      setError(error.message || "Registration failed");
     }
   };
  
@@ -92,9 +106,7 @@ const Register = ({ onLogin }) => {
         className="absolute inset-0 bg-gradient-to-br from-yellow-400 via-transparent to-yellow-600"
       />
     </div>
-         {error && (
-          <div className="text-red-500 text-sm mb-4">{error}</div>
-        )}
+       
       <div className=" ">
         {/* Logo Section */}
         <motion.div
@@ -373,7 +385,9 @@ const Register = ({ onLogin }) => {
                 <div className="absolute top-1/2 left-1/2 w-0 h-0 rounded-full bg-white/30 -translate-x-1/2 -translate-y-1/2 transition-all duration-600 group-hover:w-96 group-hover:h-96" />
               </button>
             </form>
-
+              {error && (
+          <div className="text-red-500 flex justify-center item-center p-5 mt-2 border-2 border-red-500 text-sm mb-4">{error}</div>
+        )}
             {/* Divider */}
             <div className="flex items-center gap-4 my-8">
               <div className="flex-1 h-px bg-[#2a2a2a]" />

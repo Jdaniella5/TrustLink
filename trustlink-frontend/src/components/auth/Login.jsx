@@ -9,25 +9,23 @@ const Login = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(''); // ADD THIS FOR ERROR DISPLAY
   const navigate = useNavigate(); // ADD THIS
-
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setIsLoading(true);
-  setError(''); // Clear previous errors
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
   
   const data = { email, password };
 
   try {
     const res = await loginUser(data);
+    console.log('📥 LOGIN RESPONSE:', res);
     
-    console.log('📥 LOGIN RESPONSE:', res); // Debug log
-    
-    // FIXED: Check for userId instead of user
+    // ✅ FIXED: Use cookies only (backend already sets cookie)
     if (res && res.userId) {
-      // Create a user object from the response
+      // Create user object
       const user = {
         id: res.userId,
-        email: email, // Use the email from the form
+        email: email,
         sessionId: res.sessionId
       };
       

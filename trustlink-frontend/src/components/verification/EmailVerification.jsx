@@ -8,19 +8,28 @@ import {
   Send,
   Copy
 } from 'lucide-react';
-import { sendOtp, verifyOtp, resendOtp} from '../../api/apiUser'; // Adjust path as needed
+import { sendOtp, verifyOtp, resendOtp} from '../../api/apiUser';
 
-const EmailVerification = ({ sessionId, onComplete }) => {
+const EmailVerification = ({ sessionId, userId: propUserId, onComplete }) => {  // ✅ UPDATED
   const [userEmail] = useState(() => {
     const user = JSON.parse(sessionStorage.getItem('user') || '{}');
     return user.email || 'user@example.com';
   });
   
+  // ✅ UPDATED - Use prop first, fallback to sessionStorage
   const [userId] = useState(() => {
-  const user = JSON.parse(sessionStorage.getItem('user') || '{}');
-  console.log('🔍 Full user from storage:', user);
-  return user.id || user.userId || user._id || null;  
-});
+    // Try prop first (passed from VerificationFlow)
+    if (propUserId) {
+      console.log('✅ Using userId from prop:', propUserId);
+      return propUserId;
+    }
+    
+    // Fallback to sessionStorage
+    const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+    console.log('🔍 Full user from storage:', user);
+    return user.id || user.userId || user._id || null;  
+  });
+  
   const [step, setStep] = useState('request');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
@@ -104,9 +113,6 @@ const EmailVerification = ({ sessionId, onComplete }) => {
     }
   };
 
-  /**
-   * Resend OTP with cooldown
-   */
   const handleResendOTP = async () => {
     if (resendTimer > 0) return;
     
@@ -243,7 +249,6 @@ const EmailVerification = ({ sessionId, onComplete }) => {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
 
 
   return (

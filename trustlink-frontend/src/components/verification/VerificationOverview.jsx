@@ -3,24 +3,13 @@
 import React from 'react';
 import { Camera, MapPin, Smartphone, Mail, Users, Award, Check, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { logoutUser } from '../../api/apiUser';
 
 const VerificationOverview = ({ stepStatus, onStepClick, overallProgress, gpsTrackingActive }) => {
 
   const navigate = useNavigate();
 
  
-  const handlelogout = async () => {
-  try {
-    await logoutUser();
-  } catch (error) {
-    // Silently handle - 401 just means session already expired
-    // which is fine for logout
-  } finally {
-    sessionStorage.removeItem('user');
-    navigate('/login');
-  }
-};
+  
 
   const VERIFICATION_STEPS = [
     {
@@ -510,33 +499,7 @@ const VerificationOverview = ({ stepStatus, onStepClick, overallProgress, gpsTra
             ))}
           </div>
         </div>
-                {/* Logout Button */}
-        <div 
-          onClick={handlelogout} 
-          style={{
-            maxWidth: '700px',
-            margin: '20px auto 0',
-            background: '#ef4444',
-            borderRadius: '24px',
-            padding: '16px',
-            textAlign: 'center',
-            cursor: 'pointer',
-            color: '#ffffff',
-            fontWeight: '700',
-            fontSize: '16px',
-            transition: 'all 0.3s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#dc2626';
-            e.currentTarget.style.transform = 'translateY(-2px)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#ef4444';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}
-        >
-          LOGOUT
-        </div>
+        
       </div>
         
       <style>{`
