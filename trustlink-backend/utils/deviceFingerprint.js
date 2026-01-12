@@ -1,4 +1,3 @@
-import { JsonRpcError } from '@mysten/sui.js/client';
 import crypto from 'crypto';
 
 export function buildDeviceName(meta = {}) {
@@ -23,7 +22,7 @@ export function buildDeviceName(meta = {}) {
 //stable fingerprint hash from string
 export function hashFingerprint(input) {
   return crypto.createHash('sha256')
-  .update(typeof input === "string" ? input : JSON.stringify(input))
+  .update(typeof input === "string" ? input : JSON.stringify(input, Object.keys(input).sort()))
   .digest("hex");
 }
 

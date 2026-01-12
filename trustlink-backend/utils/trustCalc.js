@@ -7,7 +7,8 @@ export const calculateTrustScore = (session) => {
   if (session.face === "verified") score += WEIGHTS.faceMatch;
   if (session.primaryDeviceId) score += WEIGHTS.device;
 
-  score += session.communityVouches * 3;
+  const communityScore = Math.min(session.communityVouches * 5, 10);
+  score += communityScore
   score -= session.movementScore || 0;
 
   return Math.max(0, Math.min(100, score));

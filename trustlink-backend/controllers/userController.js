@@ -7,6 +7,10 @@ import { sendVerificationEmail } from '../utils/sendVerificationEmail.js';
 import { randomBytes } from 'crypto';
 import Device from '../models/deviceModel.js';
 import { hashFingerprint } from '../utils/deviceFingerprint.js';
+import { calculateDeviceRisk } from '../utils/deviceRisk.js';
+import { recalcSessionTrust } from '../utils/recalculateTrust.js';
+import jwt from "jsonwebtoken";
+
 
 export const register = async (req, res, next) => {
   try {
@@ -23,7 +27,7 @@ export const register = async (req, res, next) => {
 
 export const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, deviceMeta } = req.body;
     const u = await User.findOne({ email });
     if (!u) return res.status(400).json({ message: 'Invalid' });
 
@@ -48,7 +52,8 @@ export const login = async (req, res, next) => {
     u.loginAttempts = 0;
     u.lockUntil = null;
     await u.save();
-    /*
+
+
     const fingerprintHash = hashFingerprint(deviceMeta);
     const devices = await Device.find({ userId: u._id });
 
@@ -60,17 +65,33 @@ export const login = async (req, res, next) => {
           message: "Device limit reached. Delete a device to continue"
         });
       }
+
+      const session = await Session.create({
+  userId: u._id,
+  riskSignals: { newDevice: true }
+});
+
       return res.status(401).json({
         requiresVerification: true,
-        message: "New device detected. Re-verifiy"
+        sessionId: session._id,
+        message: "New device detected. Re-verifiy",
+
       });
-    }*/
+    }
 
     //when device is known create session
-    const session = await Session.create({ userId: u._id, /*primaryDeviceId: knownDevice._id*/ });
+    const session = await Session.create({ userId: u._id, primaryDeviceId: knownDevice._id });
+    const deviceRisk = calculateDeviceRisk({ isknownDevice: true, isVerified: !u.isVerified, deviceCount: devices.length });
+    session.movementScore = deviceRisk;
+    session.riskSignals = {
+      newDevice: false,
+      ipChanged: false
+    };
+    await session.save();
+    await recalcSessionTrust(session._id);
+
 
     // create JWT
-    const jwt = (await import('jsonwebtoken')).default;
     const token = jwt.sign({ userId: u._id, sessionId: session._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.cookie('token', token, {
   httpOnly: true,
@@ -126,7 +147,8 @@ export const verifyOtp = async (req, res, next) => {
     // update session
     const session = await Session.findOne({ userId }).sort({ createdAt: -1 });
     if (session) { session.emailVerifiedAt = new Date(); await session.save(); }
-
+    await session.save();
+    await recalcSessionTrust(session._id);
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 res.cookie('token', token, {
   httpOnly: true,

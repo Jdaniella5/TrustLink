@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 const verificationSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   otpHash: String,
+  sessionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Session' },
   purpose: { type: String, enum: ['email','device','phone'], default: 'email' },
   expiresAt: Date,
   attempts: { type: Number, default: 0 },

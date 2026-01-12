@@ -10,4 +10,6 @@ const communitySchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   approvedAt: { type: Date }
 });
-export default mongoose.model('CommunityVouch', communitySchema);
+const CommunityVouch = mongoose.model('CommunityVouch', communitySchema);
+
+export default CommunityVouch;

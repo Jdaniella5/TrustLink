@@ -12,4 +12,6 @@ const deviceSchema = new mongoose.Schema({
   lastSeenAt: { type: Date, default: Date.now },
   lastSeenIp: { type: String },
 });
-export default mongoose.model('Device', deviceSchema);
+const Device = mongoose.model('Device', deviceSchema);
+
+export default Device;
